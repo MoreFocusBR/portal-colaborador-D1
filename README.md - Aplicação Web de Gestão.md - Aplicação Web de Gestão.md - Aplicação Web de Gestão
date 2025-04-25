@@ -1,0 +1,93 @@
+# README.md - Aplicação Web de Gestão
+
+## Visão Geral
+Esta aplicação web foi desenvolvida utilizando Node.js (backend), React (frontend) e TypeScript em ambas as partes. A aplicação consome APIs REST e se conecta a uma base PostgreSQL para fornecer diversas funcionalidades de gestão.
+
+## Tecnologias Utilizadas
+- **Frontend**: React + TypeScript + Material-UI
+- **Backend**: Node.js + TypeScript + Express
+- **Gerenciamento de Estado**: Zustand
+- **Banco de Dados**: PostgreSQL (simulado)
+
+## Estrutura do Projeto
+```
+projeto-app-web/
+├── frontend/           # Aplicação React com TypeScript
+│   ├── src/
+│   │   ├── components/ # Componentes reutilizáveis
+│   │   ├── pages/      # Páginas da aplicação
+│   │   ├── store/      # Gerenciamento de estado com Zustand
+│   │   └── App.tsx     # Componente principal com rotas
+│   └── package.json
+│
+└── backend/            # Servidor Node.js com TypeScript
+    ├── src/
+    │   └── index.ts    # Servidor Express com rotas e middleware
+    └── package.json
+```
+
+## Funcionalidades Implementadas
+
+### 1. Tela de Transações Financeiras
+- Listagem de transações com colunas: Data/hora, Tipo transação, Tipo operação, Valor, Pagador, Documento do pagador
+- Paginação
+- Etiquetas coloridas para tipo de transação e tipo operação
+- Filtro por período e tipo de transação
+
+### 2. Tela de Mensagens WhatsApp
+- Listagem dos templates de mensagens configuradas
+- Colunas: Status, Mensagem, Ativo/Inativo
+- Mensagens personalizáveis com placeholders como `{{primeiroNome}}`, `{{numeroPedido}}`
+
+### 3. Tela de Mensagens E-mail
+- Listagem dos templates de mensagens configuradas
+- Colunas: Status, Mensagem, Ativo/Inativo
+- Mensagens personalizáveis com placeholders
+
+### 4. Tela de Gerenciamento de Usuários
+- Listagem de usuários com colunas: Nome, E-mail, Grupos, Última atividade
+- Funcionalidades para adicionar, editar e remover usuários
+
+### 5. Tela de Grupos de Usuários
+- Listagem dos grupos com colunas: Grupo, Telas permitidas
+- Funcionalidades para adicionar, editar e remover grupos
+- Controle de permissões por tela
+
+### 6. Tela de Vendas
+- Filtros por período, status e número de venda
+- Tabela de vendas com informações detalhadas
+- Botões de troca de status (A Enviar, Aguardando Estoque, Aguard. Autoriz. para Expedir)
+- Confirmação via modal antes de alterar o status
+- Habilitação condicional dos botões apenas para vendas com status "Financeiro Validado"
+
+### 7. Sistema de Autenticação e Autorização
+- Tela de login
+- Proteção de rotas no frontend
+- Middleware de autorização no backend
+- Controle de acesso baseado em grupos de usuários
+
+## Como Executar
+
+### Backend
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm start
+```
+
+## Credenciais de Teste
+- **Administrador**: email: admin@exemplo.com, senha: admin123
+- **Financeiro**: email: financeiro@exemplo.com, senha: financeiro123
+- **Atendimento**: email: atendimento@exemplo.com, senha: atendimento123
+
+## Observações
+- O backend utiliza dados simulados para demonstração
+- A conexão com o PostgreSQL está configurada mas utiliza dados em memória para facilitar os testes
+- Cada usuário tem acesso apenas às telas permitidas para seu grupo
