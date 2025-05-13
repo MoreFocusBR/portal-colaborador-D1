@@ -285,7 +285,7 @@ const GruposUsuarios: React.FC = () => {
     {
       id: 'nome',
       label: 'Nome do Grupo',
-      type: 'text',
+      type: 'text' as const,
       required: true
     }
   ];

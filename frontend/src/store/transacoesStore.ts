@@ -11,6 +11,9 @@ export interface Transacao {
   documentoPagador: string;
 }
 
+const varLocalStorage = JSON.parse(localStorage["auth-storage"]);
+const token = varLocalStorage.state.token;
+
 interface TransacoesState {
   transacoes: Transacao[];
   loading: boolean;
@@ -60,11 +63,17 @@ const useTransacoesStore = create<TransacoesState>((set, get) => ({
       }
       
       // URL base da API
-      const baseUrl = 'http://200.80.111.222:10065/interExtratoD1';
-      const url = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+      const baseUrl = 'http://localhost:3001/interExtratoD1';
+      const url = params.toString() ? `${baseUrl}` : baseUrl;
       
       // Fazer a requisição para a API
-      const response = await fetch(url);
+      const response = await fetch(url, {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`, 
+  },
+});
       
       if (!response.ok) {
         throw new Error(`Erro ao buscar transações: ${response.status}`);

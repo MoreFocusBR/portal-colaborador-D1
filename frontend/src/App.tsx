@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { 
-  Box, 
   Drawer, 
   AppBar, 
   Toolbar, 
@@ -16,6 +15,8 @@ import {
   CssBaseline,
   Button
 } from '@mui/material';
+import Box from '@mui/material/Box';
+import { useTheme } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -40,6 +41,7 @@ import useAuthStore from './store/authStore';
 const App: React.FC = () => {
   const [open, setOpen] = React.useState(false);
   const { isAuthenticated, usuario, logout } = useAuthStore();
+  const theme = useTheme();
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -156,37 +158,37 @@ const App: React.FC = () => {
                 </Toolbar>
                 <Divider />
                 <List>
-                  <ListItem button component={Link} to="/transacoes">
+                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/transacoes" />)}>
                     <ListItemIcon>
                       <AttachMoneyIcon />
                     </ListItemIcon>
                     <ListItemText primary="Transações Financeiras" />
                   </ListItem>
-                  <ListItem button component={Link} to="/mensagens-whatsapp">
+                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/mensagens-whatsapp" />)}>
                     <ListItemIcon>
                       <WhatsAppIcon />
                     </ListItemIcon>
                     <ListItemText primary="Mensagens WhatsApp" />
                   </ListItem>
-                  <ListItem button component={Link} to="/mensagens-email">
+                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/mensagens-email" />)}>
                     <ListItemIcon>
                       <EmailIcon />
                     </ListItemIcon>
                     <ListItemText primary="Mensagens E-mail" />
                   </ListItem>
-                  <ListItem button component={Link} to="/usuarios">
+                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/usuarios" />)}>
                     <ListItemIcon>
                       <PeopleIcon />
                     </ListItemIcon>
                     <ListItemText primary="Gerenciamento de Usuários" />
                   </ListItem>
-                  <ListItem button component={Link} to="/grupos">
+                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/grupos" />)}>
                     <ListItemIcon>
                       <GroupsIcon />
                     </ListItemIcon>
                     <ListItemText primary="Grupos de Usuários" />
                   </ListItem>
-                  <ListItem button component={Link} to="/vendas">
+                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/vendas" />)}>
                     <ListItemIcon>
                       <ShoppingCartIcon />
                     </ListItemIcon>

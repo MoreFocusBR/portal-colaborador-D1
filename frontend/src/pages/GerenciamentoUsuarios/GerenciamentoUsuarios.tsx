@@ -245,19 +245,19 @@ const GerenciamentoUsuarios: React.FC = () => {
     {
       id: 'nome',
       label: 'Nome',
-      type: 'text',
+      type: 'text' as 'text',
       required: true
     },
     {
       id: 'email',
       label: 'E-mail',
-      type: 'email',
+      type: 'email' as 'email',
       required: true
     },
     {
       id: 'grupos',
       label: 'Grupos',
-      type: 'select',
+      type: 'select' as 'select',
       required: false,
       options: grupos.map(grupo => ({ value: grupo.id, label: grupo.nome })),
       fullWidth: true

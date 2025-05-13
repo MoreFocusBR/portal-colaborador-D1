@@ -18,7 +18,7 @@ interface Column {
   label: string;
   minWidth?: number;
   align?: 'right' | 'left' | 'center';
-  format?: (value: any) => React.ReactNode;
+  format?: (value: any, row?: any) => React.ReactNode;
 }
 
 interface CustomTableProps {
@@ -94,7 +94,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
                         const value = row[column.id];
                         return (
                           <TableCell key={column.id} align={column.align || 'left'}>
-                            {column.format ? column.format(value) : value}
+                            {column.format ? column.format(value, row) : value}
                           </TableCell>
                         );
                       })}

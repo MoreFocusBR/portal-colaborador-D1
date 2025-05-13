@@ -98,7 +98,7 @@ const MensagensEmail: React.FC = () => {
     { 
       id: 'ativo', 
       label: 'Ativo', 
-      format: (value: boolean, row: MensagemEmail) => renderAtivoSwitch(value, row.id) 
+      format: (value: MensagemEmail) => renderAtivoSwitch(value.ativo, value.id) 
     }
   ];
 

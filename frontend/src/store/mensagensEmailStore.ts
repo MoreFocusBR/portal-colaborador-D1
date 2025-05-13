@@ -8,6 +8,9 @@ export interface MensagemEmail {
   ativo: boolean;
 }
 
+const varLocalStorage = JSON.parse(localStorage["auth-storage"]);
+const token = varLocalStorage.state.token;
+
 interface MensagensEmailState {
   mensagens: MensagemEmail[];
   loading: boolean;
@@ -33,7 +36,13 @@ const useMensagensEmailStore = create<MensagensEmailState>((set, get) => ({
       const url = 'http://localhost:3001/mensagens-email';
       
       // Fazer a requisição para a API
-      const response = await fetch(url);
+      const response = await fetch(url, {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`, 
+  },
+});
       
       if (!response.ok) {
         throw new Error(`Erro ao buscar mensagens: ${response.status}`);
@@ -71,6 +80,7 @@ const useMensagensEmailStore = create<MensagensEmailState>((set, get) => ({
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ ativo: !mensagem.ativo }),
       });

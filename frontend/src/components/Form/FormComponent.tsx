@@ -1,10 +1,8 @@
 import React from 'react';
 import {
+  Box,
   TextField,
   Button,
-  Grid,
-  Box,
-  Typography,
   Paper,
   FormControl,
   InputLabel,
@@ -16,6 +14,10 @@ import {
   Divider,
   CircularProgress
 } from '@mui/material';
+import {
+  GridLegacy as Grid,
+  Typography,
+} from "@mui/material";
 import { SelectChangeEvent } from '@mui/material/Select';
 
 interface FormField {
@@ -88,11 +90,11 @@ const FormComponent: React.FC<FormComponentProps> = ({
         <Grid container spacing={3}>
           {fields.map((field) => (
             <Grid
-              item
-              xs={12}
-              sm={field.fullWidth === false ? 6 : 12}
-              key={field.id}
-            >
+            item
+            xs={12}
+            sm={field.fullWidth === false ? 6 : 12}
+            key={field.id}
+          >
               {field.type === 'select' ? (
                 <FormControl
                   fullWidth

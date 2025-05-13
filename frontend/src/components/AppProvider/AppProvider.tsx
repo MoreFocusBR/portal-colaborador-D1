@@ -4,8 +4,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { ptBR } from '@mui/material/locale';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import ptBRLocale from 'date-fns/locale/pt-BR';
-import { NotificationProvider } from './components/Notification/NotificationSystem';
+import { ptBR as ptBRLocale } from 'date-fns/locale';
+import { NotificationProvider } from '../Notification/NotificationSystem';
 
 // Definindo o tema personalizado
 const theme = createTheme(

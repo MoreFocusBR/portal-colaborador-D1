@@ -16,7 +16,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import ptBR from 'date-fns/locale/pt-BR';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -95,114 +95,12 @@ const FilterComponent: React.FC<FilterProps> = ({
     <Paper sx={{ p: 2, mb: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">Filtros</Typography>
-        <IconButton onClick={toggleFilters}>
+        <IconButton onClick={toggleFilters} aria-label={showFilters ? 'Fechar filtros' : 'Abrir filtros'}>
           {showFilters ? <CloseIcon /> : <FilterListIcon />}
         </IconButton>
       </Box>
 
-      {showFilters && (
-        <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
-          <Grid container spacing={2}>
-            {dateRangeFilter && (
-              <>
-                <Grid item xs={12} sm={6} md={3}>
-                  <DatePicker
-                    label="Data Inicial"
-                    value={startDate}
-                    onChange={(newValue) => setStartDate(newValue)}
-                    slotProps={{ textField: { fullWidth: true, variant: 'outlined' } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <DatePicker
-                    label="Data Final"
-                    value={endDate}
-                    onChange={(newValue) => setEndDate(newValue)}
-                    slotProps={{ textField: { fullWidth: true, variant: 'outlined' } }}
-                  />
-                </Grid>
-              </>
-            )}
-
-            {typeFilter && (
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth>
-                  <InputLabel id="type-select-label">Tipo</InputLabel>
-                  <Select
-                    labelId="type-select-label"
-                    id="type-select"
-                    value={type}
-                    label="Tipo"
-                    onChange={handleTypeChange}
-                  >
-                    <MenuItem value="">
-                      <em>Todos</em>
-                    </MenuItem>
-                    {typeOptions.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            )}
-
-            {statusFilter && (
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth>
-                  <InputLabel id="status-select-label">Status</InputLabel>
-                  <Select
-                    labelId="status-select-label"
-                    id="status-select"
-                    value={status}
-                    label="Status"
-                    onChange={handleStatusChange}
-                  >
-                    <MenuItem value="">
-                      <em>Todos</em>
-                    </MenuItem>
-                    {statusOptions.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            )}
-
-            {searchFilter && (
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label={searchPlaceholder}
-                  variant="outlined"
-                  value={search}
-                  onChange={handleSearchChange}
-                />
-              </Grid>
-            )}
-
-            {additionalFilters && (
-              <Grid item xs={12}>
-                {additionalFilters}
-              </Grid>
-            )}
-
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                <Button variant="outlined" onClick={handleClear}>
-                  Limpar
-                </Button>
-                <Button variant="contained" onClick={handleFilter}>
-                  Aplicar Filtros
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </LocalizationProvider>
-      )}
+      
     </Paper>
   );
 };

@@ -17,6 +17,7 @@ import CustomTable from '../../components/Table/CustomTable';
 import ConfirmationModal from '../../components/Modal/ConfirmationModal';
 import { useNotification } from '../../components/Notification/NotificationSystem';
 import useVendasStore, { Venda } from '../../store/vendasStore';
+import { GridView } from '@mui/icons-material';
 
 // Opções para o filtro de período
 const periodoOptions = [
@@ -246,17 +247,17 @@ const TelaVendas: React.FC = () => {
     { 
       id: 'id', 
       label: 'A Enviar',
-      format: (value: string, row: Venda) => renderBotaoAEnviar(row)
+      format: (row: Venda) => renderBotaoAEnviar(row)
     },
     { 
       id: 'id', 
       label: 'Aguardando Estoque',
-      format: (value: string, row: Venda) => renderBotaoAguardandoEstoque(row)
+      format: (row: Venda) => renderBotaoAguardandoEstoque(row)
     },
     { 
       id: 'id', 
       label: 'Aguard. Autoriz.',
-      format: (value: string, row: Venda) => renderBotaoAguardandoAutorizacao(row)
+      format: (row: Venda) => renderBotaoAguardandoAutorizacao(row)
     }
   ];
 
@@ -273,7 +274,7 @@ const TelaVendas: React.FC = () => {
         </Typography>
         
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} component="div">
             <FormControl fullWidth>
               <InputLabel id="periodo-select-label">Período</InputLabel>
               <Select
@@ -292,7 +293,7 @@ const TelaVendas: React.FC = () => {
             </FormControl>
           </Grid>
           
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} component="div">
             <FormControl fullWidth>
               <InputLabel id="status-select-label">Status</InputLabel>
               <Select
@@ -314,7 +315,7 @@ const TelaVendas: React.FC = () => {
             </FormControl>
           </Grid>
           
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} component="div">
             <TextField
               fullWidth
               label="Número da Venda"
@@ -324,7 +325,7 @@ const TelaVendas: React.FC = () => {
             />
           </Grid>
           
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} component="div">
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button 
                 variant="outlined" 
