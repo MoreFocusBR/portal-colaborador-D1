@@ -82,7 +82,7 @@ const useMensagensEmailStore = create<MensagensEmailState>((set, get) => ({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ ativo: !mensagem.ativo }),
+        body: JSON.stringify({ Ativo: !mensagem.ativo }),
       });
       
       if (!response.ok) {

@@ -1,96 +1,118 @@
 import { create } from 'zustand';
 
-// Definição dos tipos para as transações financeiras
-export interface Transacao {
-  id: string;
-  dataHora: string;
-  tipoTransacao: 'PIX' | 'Transferência' | 'Boleto';
-  tipoOperacao: 'C' | 'D';
-  valor: number;
-  pagador: string;
-  documentoPagador: string;
+// Definição dos tipos para as transações financeiras conforme a API externa
+export interface DetalhesTransacao {
+  txId: string;
+  nomePagador: string;
+  descricaoPix: string;
+  cpfCnpjPagador: string;
+  nomeEmpresaPagador: string;
+  tipoDetalhe: string;
+  endToEndId: string;
+  chavePixRecebedor: string;
 }
 
-const varLocalStorage = JSON.parse(localStorage["auth-storage"]);
-const token = varLocalStorage.state.token;
+export interface Transacao {
+  idTransacao: string;
+  dataInclusao: string;
+  dataTransacao: string;
+  tipoTransacao: string; // PIX, Transferência, Boleto, etc.
+  tipoOperacao: string;  // C (Crédito), D (Débito)
+  valor: string; // A API retorna como string, converter para número se necessário na UI
+  titulo: string;
+  descricao: string;
+  numeroDocumento: string;
+  detalhes?: DetalhesTransacao; // Opcional, pois nem toda transação pode ter
+}
 
 interface TransacoesState {
   transacoes: Transacao[];
   loading: boolean;
   error: string | null;
   filtros: {
-    dataInicial: Date | null;
-    dataFinal: Date | null;
+    dataInicial: string; // Manter como string para o payload da API
+    dataFinal: string;   // Manter como string para o payload da API
     tipoTransacao: string;
+    docPagador: string;
+    pagador: string;
+    valor: string;
   };
+  totalPaginas: number;
+  totalElementos: number;
   
-  // Ações
-  fetchTransacoes: () => Promise<void>;
+  fetchTransacoes: (payload?: any) => Promise<void>;
   setFiltros: (filtros: Partial<TransacoesState['filtros']>) => void;
 }
 
-// Criação do store com Zustand
 const useTransacoesStore = create<TransacoesState>((set, get) => ({
   transacoes: [],
   loading: false,
   error: null,
   filtros: {
-    dataInicial: null,
-    dataFinal: null,
+    dataInicial: '2025-01-12', // Valor padrão conforme solicitado
+    dataFinal: '2025-03-12',   // Valor padrão conforme solicitado
     tipoTransacao: '',
+    docPagador: '', 
+    pagador: '',
+    valor: '',
   },
+  totalPaginas: 0,
+  totalElementos: 0,
   
-  // Função para buscar transações da API
-  fetchTransacoes: async () => {
+  fetchTransacoes: async (payloadRequest) => {
     const { filtros } = get();
     
+    // Payload padrão conforme solicitado
+    const defaultPayload = {
+      dataInicio: filtros.dataInicial, // Usar filtros do store ou valores fixos
+      dataFim: filtros.dataFinal,     // Usar filtros do store ou valores fixos
+      tokenExtrato: "klajdfJHGS5%$#$99",
+      dias: 1 // Este campo parece fixo, mas pode ser ajustado se necessário
+    };
+
+    const payload = payloadRequest || defaultPayload;
+
     try {
       set({ loading: true, error: null });
       
-      // Construir parâmetros de consulta baseados nos filtros
-      const params = new URLSearchParams();
-      
-      if (filtros.dataInicial) {
-        params.append('dataInicial', filtros.dataInicial.toISOString().split('T')[0]);
-      }
-      
-      if (filtros.dataFinal) {
-        params.append('dataFinal', filtros.dataFinal.toISOString().split('T')[0]);
-      }
-      
-      if (filtros.tipoTransacao) {
-        params.append('tipoTransacao', filtros.tipoTransacao);
-      }
-      
-      // URL base da API
-      const baseUrl = 'http://localhost:3001/interExtratoD1';
-      const url = params.toString() ? `${baseUrl}` : baseUrl;
-      
-      // Fazer a requisição para a API
-      const response = await fetch(url, {
-  method: 'GET',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`, 
-  },
-});
+      const response = await fetch('http://200.80.111.222:10065/interExtratoD1', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
       
       if (!response.ok) {
-        throw new Error(`Erro ao buscar transações: ${response.status}`);
+        const errorData = await response.text();
+        throw new Error(`Erro ao buscar transações: ${response.status} - ${errorData}`);
       }
       
       const data = await response.json();
-      set({ transacoes: data, loading: false });
+      
+      if (data && data.resExtrato && Array.isArray(data.resExtrato.transacoes)) {
+        set({
+          transacoes: data.resExtrato.transacoes,
+          totalPaginas: data.resExtrato.totalPaginas || 0,
+          totalElementos: data.resExtrato.totalElementos || 0,
+          loading: false,
+        });
+      } else {
+        throw new Error('Formato de resposta inesperado da API');
+      }
+
     } catch (error) {
       console.error('Erro ao buscar transações:', error);
       set({ 
-        error: error instanceof Error ? error.message : 'Erro desconhecido ao buscar transações', 
-        loading: false 
+        error: error instanceof Error ? error.message : 'Erro desconhecido ao buscar transações',
+        loading: false,
+        transacoes: [], // Limpar transações em caso de erro
+        totalPaginas: 0,
+        totalElementos: 0,
       });
     }
   },
   
-  // Função para atualizar filtros
   setFiltros: (novosFiltros) => {
     set((state) => ({
       filtros: {
@@ -102,3 +124,4 @@ const useTransacoesStore = create<TransacoesState>((set, get) => ({
 }));
 
 export default useTransacoesStore;
+

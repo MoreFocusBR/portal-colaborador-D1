@@ -31,19 +31,26 @@ const GerenciamentoUsuarios: React.FC = () => {
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [currentUsuario, setCurrentUsuario] = useState<Partial<Usuario> | null>(null);
   const [usuarioToDelete, setUsuarioToDelete] = useState<string | null>(null);
-  const [formValues, setFormValues] = useState<Record<string, any>>({});
+  const [formValues, setFormValues] = useState<Record<string, any>>({
+    nome: '',
+    email: '',
+    grupos: [] // Inicialização correta do array vazio
+  });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isEditing, setIsEditing] = useState(false);
 
   // Efeito para carregar usuários e grupos ao montar o componente
   useEffect(() => {
-    fetchUsuarios().catch(err => {
-      showNotification(`Erro ao carregar usuários: ${err.message}`, 'error');
-    });
+    const loadData = async () => {
+      try {
+        await fetchUsuarios();
+        await fetchGrupos();
+      } catch (err) {
+        showNotification(`Erro ao carregar dados: ${err instanceof Error ? err.message : 'Erro desconhecido'}`, 'error');
+      }
+    };
     
-    fetchGrupos().catch(err => {
-      showNotification(`Erro ao carregar grupos: ${err.message}`, 'error');
-    });
+    loadData();
   }, [fetchUsuarios, fetchGrupos, showNotification]);
 
   // Exibir notificação se houver erro
@@ -54,13 +61,21 @@ const GerenciamentoUsuarios: React.FC = () => {
   }, [error, showNotification]);
 
   // Função para formatar data/hora
-  const formatarDataHora = (dataHora: string) => {
-    const data = new Date(dataHora);
-    return data.toLocaleString('pt-BR');
+  const formatarDataHora = (dataHora: string): string => {
+    try {
+      const data = new Date(dataHora);
+      return data.toLocaleString('pt-BR');
+    } catch (error) {
+      return 'Data inválida';
+    }
   };
 
   // Função para renderizar chips de grupos
-  const renderGrupos = (gruposIds: string[]) => {
+  const renderGrupos = (gruposIds: string[]): React.ReactNode => {
+    if (!gruposIds || !Array.isArray(gruposIds) || gruposIds.length === 0) {
+      return <Typography variant="body2">Nenhum grupo</Typography>;
+    }
+    
     return (
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
         {gruposIds.map(grupoId => {
@@ -80,7 +95,7 @@ const GerenciamentoUsuarios: React.FC = () => {
   };
 
   // Função para renderizar botões de ação
-  const renderAcoes = (id: string) => {
+  const renderAcoes = (id: string): React.ReactNode => {
     return (
       <Box sx={{ display: 'flex', gap: 1 }}>
         <IconButton 
@@ -123,7 +138,7 @@ const GerenciamentoUsuarios: React.FC = () => {
       setFormValues({
         nome: usuario.nome,
         email: usuario.email,
-        grupos: usuario.grupos
+        grupos: Array.isArray(usuario.grupos) ? usuario.grupos : [] // Garantir que grupos seja um array
       });
       setFormErrors({});
       setOpenForm(true);
@@ -186,6 +201,14 @@ const GerenciamentoUsuarios: React.FC = () => {
       errors.email = 'E-mail inválido';
     }
     
+    // Garantir que grupos seja um array
+    if (!Array.isArray(formValues.grupos)) {
+      setFormValues(prev => ({
+        ...prev,
+        grupos: []
+      }));
+    }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -197,18 +220,18 @@ const GerenciamentoUsuarios: React.FC = () => {
     }
     
     try {
-      if (isEditing && currentUsuario) {
-        await atualizarUsuario(currentUsuario.id!, {
+      if (isEditing && currentUsuario && currentUsuario.id) {
+        await atualizarUsuario(currentUsuario.id, {
           nome: formValues.nome,
           email: formValues.email,
-          grupos: formValues.grupos
+          grupos: Array.isArray(formValues.grupos) ? formValues.grupos : []
         });
         showNotification('Usuário atualizado com sucesso', 'success');
       } else {
         await adicionarUsuario({
           nome: formValues.nome,
           email: formValues.email,
-          grupos: formValues.grupos,
+          grupos: Array.isArray(formValues.grupos) ? formValues.grupos : [],
           ultimaAtividade: new Date().toISOString()
         });
         showNotification('Usuário adicionado com sucesso', 'success');
@@ -217,6 +240,11 @@ const GerenciamentoUsuarios: React.FC = () => {
     } catch (error) {
       showNotification(`Erro ao salvar usuário: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, 'error');
     }
+  };
+
+  // Função para fechar o formulário
+  const handleCloseForm = () => {
+    setOpenForm(false);
   };
 
   // Definição das colunas da tabela
@@ -245,19 +273,20 @@ const GerenciamentoUsuarios: React.FC = () => {
     {
       id: 'nome',
       label: 'Nome',
-      type: 'text' as 'text',
+      type: 'text' as const,
       required: true
     },
     {
       id: 'email',
       label: 'E-mail',
-      type: 'email' as 'email',
+      type: 'email' as const,
       required: true
     },
     {
       id: 'grupos',
       label: 'Grupos',
-      type: 'select' as 'select',
+      type: 'select' as const,
+      multiple: true, // Permitir múltipla seleção
       required: false,
       options: grupos.map(grupo => ({ value: grupo.id, label: grupo.nome })),
       fullWidth: true
@@ -296,7 +325,7 @@ const GerenciamentoUsuarios: React.FC = () => {
       {/* Modal de formulário */}
       <Dialog 
         open={openForm} 
-        onClose={() => setOpenForm(false)}
+        onClose={handleCloseForm}
         maxWidth="md"
         fullWidth
       >
@@ -309,12 +338,23 @@ const GerenciamentoUsuarios: React.FC = () => {
             values={formValues}
             errors={formErrors}
             onChange={handleFormChange}
-            onSubmit={handleSaveUsuario}
-            submitButtonText="Salvar"
-            cancelButtonText="Cancelar"
-            onCancel={() => setOpenForm(false)}
+            onSubmit={handleSaveUsuario} // onSubmit é obrigatório
+            submitButtonText="" // Esconder texto do botão para não exibi-lo
+            cancelButtonText=""  // Esconder texto do botão para não exibi-lo
           />
         </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseForm} color="inherit">
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSaveUsuario} 
+            variant="contained" 
+            color="primary"
+          >
+            Salvar
+          </Button>
+        </DialogActions>
       </Dialog>
       
       {/* Modal de confirmação de exclusão */}
