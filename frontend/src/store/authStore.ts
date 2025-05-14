@@ -12,6 +12,7 @@ interface Usuario {
 interface AuthState {
   token: string | null;
   usuario: Usuario | null;
+  permissoes: string[]; // permissões reais das telas
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
@@ -28,48 +29,61 @@ const useAuthStore = create<AuthState>()(
     (set, get) => ({
       token: null,
       usuario: null,
+      permissoes: [],
       isAuthenticated: false,
       loading: false,
       error: null,
       
       // Função para realizar login
       login: async (email, senha) => {
+        set({ loading: true, error: null });
         try {
-          set({ loading: true, error: null });
-          
-          // URL para autenticação
-          const url = 'http://localhost:3001/auth/login';
-          
-          // Fazer a requisição para a API
-          const response = await fetch(url, {
+          // Login na API
+          const response = await fetch('http://localhost:3001/auth/login', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, senha }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, senha })
           });
-          
           if (!response.ok) {
-            throw new Error(`Erro ao realizar login: ${response.status}`);
+            const data = await response.json();
+            throw new Error(data.error || 'Erro ao fazer login');
           }
-          
           const data = await response.json();
-          
-          // Armazenar token e informações do usuário
-          set({ 
+          // Buscar permissões reais dos grupos do usuário
+          let permissoes: string[] = [];
+          if (data.usuario && Array.isArray(data.usuario.grupos) && data.usuario.grupos.length > 0) {
+            const gruposResp = await fetch(`http://localhost:3001/grupos?ids=${data.usuario.grupos.join(',')}`, {
+              headers: { 'Authorization': `Bearer ${data.token}` }
+            });
+            if (gruposResp.ok) {
+              const grupos = await gruposResp.json();
+              // Unir todas as telasPermitidas dos grupos
+              permissoes = grupos.reduce((acc: string[], grupo: any) => {
+                if (Array.isArray(grupo.telasPermitidas)) {
+                  return acc.concat(grupo.telasPermitidas);
+                }
+                return acc;
+              }, []);
+              // Remover duplicatas
+              permissoes = Array.from(new Set(permissoes));
+            }
+          }
+          set({
             token: data.token,
             usuario: data.usuario,
+            permissoes,
             isAuthenticated: true,
-            loading: false 
-          });
-        } catch (error) {
-          console.error('Erro ao realizar login:', error);
-          set({ 
-            error: error instanceof Error ? error.message : 'Erro desconhecido ao realizar login', 
             loading: false,
-            token: null,
+            error: null
+          });
+        } catch (error: any) {
+          set({
+            error: error.message || 'Erro desconhecido ao fazer login',
+            loading: false,
+            isAuthenticated: false,
             usuario: null,
-            isAuthenticated: false
+            permissoes: [],
+            token: null
           });
         }
       },
@@ -86,32 +100,9 @@ const useAuthStore = create<AuthState>()(
       
       // Função para verificar se o usuário tem autorização para acessar uma tela
       verificarAutorizacao: (telaId) => {
-        const { usuario, isAuthenticated } = get();
-        
-        if (!isAuthenticated || !usuario) {
-          return false;
-        }
-        
-        // Verificar se o usuário pertence a algum grupo que tem permissão para a tela
-        // Esta verificação depende da estrutura de dados do backend
-        // Por enquanto, vamos simular uma verificação simples
-        
-        // Administradores têm acesso a todas as telas
-        if (usuario.grupos.includes('1')) {
-          return true;
-        }
-        
-        // Financeiro tem acesso a transações e vendas
-        if (usuario.grupos.includes('2') && (telaId === 'transacoes' || telaId === 'vendas')) {
-          return true;
-        }
-        
-        // Atendimento tem acesso a mensagens
-        if (usuario.grupos.includes('3') && (telaId === 'mensagens-whatsapp' || telaId === 'mensagens-email')) {
-          return true;
-        }
-        
-        return false;
+        const { permissoes, isAuthenticated } = get();
+        if (!isAuthenticated) return false;
+        return permissoes.includes(telaId);
       }
     }),
     {
@@ -119,6 +110,7 @@ const useAuthStore = create<AuthState>()(
       partialize: (state) => ({ 
         token: state.token, 
         usuario: state.usuario,
+        permissoes: state.permissoes,
         isAuthenticated: state.isAuthenticated
       }), // armazenar apenas estas propriedades
     }

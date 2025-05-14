@@ -4,6 +4,7 @@ import { Pool } from "pg";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
+import dashboardRouter from './routes/dashboard';
 
 // Extender a interface Request para incluir a propriedade usuario
 declare global {
@@ -33,7 +34,7 @@ interface UsuarioToken extends JwtPayload {
 app.use(
   cors({
     origin: "*", // URL do seu frontend
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -45,6 +46,9 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+// Integrar rotas do dashboard
+app.use('/dashboard', dashboardRouter);
 
 // Configuração da conexão com o PostgreSQL
 // Nota: Em um ambiente de produção, estas credenciais viriam de variáveis de ambiente
@@ -234,35 +238,44 @@ function isUsuarioToken(decoded: any): decoded is UsuarioToken {
 
 // Middleware de autorização
 const verificarAutorizacao = (telaId: string) => {
-  return (
+  return async (
     req: express.Request,
     res: express.Response,
     next: express.NextFunction
   ) => {
-    const usuario = (req as any).usuario;
-
+    const usuario = req.usuario;
+    if (!usuario) {
+      return res.status(401).json({ error: "Usuário não autenticado" });
+    }
     const gruposDoUsuario = usuario.grupos || [];
     let autorizado = false;
 
-    for (const grupoId of gruposDoUsuario) {
-      const grupo = gruposSimulados.find((g) => g.id === grupoId);
-
-      if (grupo && grupo.telasPermitidas.includes(telaId)) {
-        autorizado = true;
-        break;
+    try {
+      // Buscar todos os grupos do usuário no banco
+      const result = await pool.query(
+        'SELECT telas_permitidas FROM grupos WHERE id = ANY($1::uuid[])',
+        [gruposDoUsuario]
+      );
+      // Verificar se alguma permissão bate com a tela
+      for (const row of result.rows) {
+        if ((row.telas_permitidas || []).includes(telaId)) {
+          autorizado = true;
+          break;
+        }
       }
+      if (!autorizado) {
+        return res.status(403).json({ error: "Acesso negado a este recurso" });
+      }
+      next();
+    } catch (error) {
+      console.error("Erro ao verificar autorização:", error);
+      return res.status(500).json({ error: "Erro ao verificar autorização" });
     }
-
-    if (!autorizado) {
-      return res.status(403).json({ error: "Acesso negado a este recurso" });
-    }
-
-    next();
   };
 };
 
 // Rota de autenticação
-app.post("/auth/login", (req, res) => {
+app.post("/auth/login", async (req, res) => {
   const { email, senha } = req.body;
 
   // Validar dados
@@ -270,38 +283,51 @@ app.post("/auth/login", (req, res) => {
     return res.status(400).json({ error: "E-mail e senha são obrigatórios" });
   }
 
-  // Buscar usuário pelo e-mail
-  const usuario = usuariosSimulados.find((u) => u.email === email);
+  try {
+    // Buscar usuário pelo e-mail no banco de dados
+    const result = await pool.query(
+      'SELECT id, nome, email, senha, grupos, ultima_atividade FROM usuarios WHERE email = $1',
+      [email]
+    );
+    const usuario = result.rows[0];
 
-  if (!usuario || usuario.senha !== senha) {
-    return res.status(401).json({ error: "Credenciais inválidas" });
+    // Verificar se usuário existe e se a senha confere
+    if (!usuario || usuario.senha !== senha) {
+      return res.status(401).json({ error: "Credenciais inválidas" });
+    }
+
+    // Gerar token JWT
+    const token = jwt.sign(
+      {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        grupos: usuario.grupos,
+      },
+      JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    // Atualizar última atividade
+    await pool.query(
+      'UPDATE usuarios SET ultima_atividade = $1 WHERE id = $2',
+      [new Date().toISOString(), usuario.id]
+    );
+
+    // Remover senha antes de enviar
+    const { senha: _, ...usuarioSemSenha } = usuario;
+
+    // Simular um pequeno atraso
+    setTimeout(() => {
+      res.json({
+        token,
+        usuario: usuarioSemSenha,
+      });
+    }, 500);
+  } catch (error) {
+    console.error("Erro ao autenticar usuário:", error);
+    res.status(500).json({ error: "Erro ao autenticar usuário" });
   }
-
-  // Gerar token JWT
-  const token = jwt.sign(
-    {
-      id: usuario.id,
-      nome: usuario.nome,
-      email: usuario.email,
-      grupos: usuario.grupos,
-    },
-    JWT_SECRET,
-    { expiresIn: "24h" }
-  );
-
-  // Atualizar última atividade
-  usuario.ultimaAtividade = new Date().toISOString();
-
-  // Retornar token e informações do usuário (sem a senha)
-  const { senha: _, ...usuarioSemSenha } = usuario;
-
-  // Simular um pequeno atraso
-  setTimeout(() => {
-    res.json({
-      token,
-      usuario: usuarioSemSenha,
-    });
-  }, 500);
 });
 
 // Rota para obter transações financeiras (protegida)
@@ -425,19 +451,14 @@ app.get(
   "/usuarios",
   autenticarToken,
   verificarAutorizacao("usuarios"),
-  (req, res) => {
-    // Em um ambiente real, buscaríamos do PostgreSQL
-    // Exemplo: const result = await pool.query('SELECT * FROM usuarios');
-
-    // Remover senhas antes de enviar
-    const usuariosSemSenha = usuariosSimulados.map(
-      ({ senha, ...resto }) => resto
-    );
-
-    // Simular um pequeno atraso para demonstrar o estado de carregamento
-    setTimeout(() => {
-      res.json(usuariosSemSenha);
-    }, 500);
+  async (req, res) => {
+    try {
+      const result = await pool.query('SELECT id, nome, email, grupos, ultima_atividade FROM usuarios');
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Erro ao buscar usuários:", error);
+      res.status(500).json({ error: "Erro ao buscar usuários" });
+    }
   }
 );
 
@@ -445,35 +466,24 @@ app.post(
   "/usuarios",
   autenticarToken,
   verificarAutorizacao("usuarios"),
-  (req, res) => {
-    const { nome, email, grupos, ultimaAtividade } = req.body;
+  async (req, res) => {
+    const { nome, email, grupos } = req.body;
 
-    // Validar dados
     if (!nome || !email) {
       return res.status(400).json({ error: "Nome e e-mail são obrigatórios" });
     }
 
-    // Em um ambiente real, inseriríamos no PostgreSQL
-    // Exemplo: const result = await pool.query('INSERT INTO usuarios (nome, email, grupos, ultima_atividade) VALUES ($1, $2, $3, $4) RETURNING *', [nome, email, grupos, ultimaAtividade]);
+    try {
+      const result = await pool.query(
+        'INSERT INTO usuarios (id, nome, email, senha, grupos, ultima_atividade) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nome, email, grupos, ultima_atividade',
+        [uuidv4(), nome, email, 'senha123', grupos || [], new Date().toISOString()]
+      );
 
-    const novoUsuario = {
-      id: uuidv4(),
-      nome,
-      email,
-      senha: "senha123", // Em produção, seria um hash
-      grupos: grupos || [],
-      ultimaAtividade: ultimaAtividade || new Date().toISOString(),
-    };
-
-    usuariosSimulados.push(novoUsuario);
-
-    // Remover senha antes de enviar
-    const { senha, ...usuarioSemSenha } = novoUsuario;
-
-    // Simular um pequeno atraso
-    setTimeout(() => {
-      res.status(201).json(usuarioSemSenha);
-    }, 300);
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Erro ao criar usuário:", error);
+      res.status(500).json({ error: "Erro ao criar usuário" });
+    }
   }
 );
 
@@ -481,35 +491,25 @@ app.patch(
   "/usuarios/:id",
   autenticarToken,
   verificarAutorizacao("usuarios"),
-  (req, res) => {
+  async (req, res) => {
     const { id } = req.params;
     const { nome, email, grupos } = req.body;
 
-    // Em um ambiente real, atualizaríamos no PostgreSQL
-    // Exemplo: await pool.query('UPDATE usuarios SET nome = $1, email = $2, grupos = $3 WHERE id = $4 RETURNING *', [nome, email, grupos, id]);
+    try {
+      const result = await pool.query(
+        'UPDATE usuarios SET nome = COALESCE($1, nome), email = COALESCE($2, email), grupos = COALESCE($3, grupos) WHERE id = $4 RETURNING id, nome, email, grupos, ultima_atividade',
+        [nome, email, grupos, id]
+      );
 
-    const usuarioIndex = usuariosSimulados.findIndex((u) => u.id === id);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
 
-    if (usuarioIndex === -1) {
-      return res.status(404).json({ error: "Usuário não encontrado" });
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Erro ao atualizar usuário:", error);
+      res.status(500).json({ error: "Erro ao atualizar usuário" });
     }
-
-    const usuarioAtualizado = {
-      ...usuariosSimulados[usuarioIndex],
-      ...(nome && { nome }),
-      ...(email && { email }),
-      ...(grupos && { grupos }),
-    };
-
-    usuariosSimulados[usuarioIndex] = usuarioAtualizado;
-
-    // Remover senha antes de enviar
-    const { senha, ...usuarioSemSenha } = usuarioAtualizado;
-
-    // Simular um pequeno atraso
-    setTimeout(() => {
-      res.json(usuarioSemSenha);
-    }, 300);
   }
 );
 
@@ -517,24 +517,45 @@ app.delete(
   "/usuarios/:id",
   autenticarToken,
   verificarAutorizacao("usuarios"),
-  (req, res) => {
+  async (req, res) => {
     const { id } = req.params;
 
-    // Em um ambiente real, removeríamos do PostgreSQL
-    // Exemplo: await pool.query('DELETE FROM usuarios WHERE id = $1', [id]);
+    try {
+      const result = await pool.query('DELETE FROM usuarios WHERE id = $1', [id]);
 
-    const usuarioIndex = usuariosSimulados.findIndex((u) => u.id === id);
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
 
-    if (usuarioIndex === -1) {
-      return res.status(404).json({ error: "Usuário não encontrado" });
-    }
-
-    usuariosSimulados.splice(usuarioIndex, 1);
-
-    // Simular um pequeno atraso
-    setTimeout(() => {
       res.status(204).end();
-    }, 300);
+    } catch (error) {
+      console.error("Erro ao deletar usuário:", error);
+      res.status(500).json({ error: "Erro ao deletar usuário" });
+    }
+  }
+);
+
+// Endpoint para alteração de senha do usuário autenticado
+app.patch(
+  "/usuarios/:id/senha",
+  autenticarToken,
+  async (req, res) => {
+    const { id } = req.params;
+    const { senha } = req.body;
+    // Só permite alterar a própria senha
+    if (!req.usuario || req.usuario.id !== id) {
+      return res.status(403).json({ error: "Acesso negado" });
+    }
+    if (!senha || senha.length < 4) {
+      return res.status(400).json({ error: "Senha inválida" });
+    }
+    try {
+      await pool.query('UPDATE usuarios SET senha = $1 WHERE id = $2', [senha, id]);
+      res.status(204).end();
+    } catch (error) {
+      console.error("Erro ao alterar senha:", error);
+      res.status(500).json({ error: "Erro ao alterar senha" });
+    }
   }
 );
 
@@ -542,15 +563,26 @@ app.delete(
 app.get(
   "/grupos",
   autenticarToken,
-  verificarAutorizacao("grupos"),
-  (req, res) => {
-    // Em um ambiente real, buscaríamos do PostgreSQL
-    // Exemplo: const result = await pool.query('SELECT * FROM grupos');
-
-    // Simular um pequeno atraso para demonstrar o estado de carregamento
-    setTimeout(() => {
-      res.json(gruposSimulados);
-    }, 500);
+  async (req, res) => {
+    try {
+      let query = 'SELECT * FROM grupos';
+      let params: any[] = [];
+      if (req.query.ids) {
+        const ids = (req.query.ids as string).split(',');
+        query += ' WHERE id = ANY($1::uuid[])';
+        params = [ids];
+      }
+      const result = await pool.query(query, params);
+      // Mapear para camelCase
+      const grupos = result.rows.map(g => ({
+        ...g,
+        telasPermitidas: g.telas_permitidas || [],
+      }));
+      res.json(grupos);
+    } catch (error) {
+      console.error("Erro ao buscar grupos:", error);
+      res.status(500).json({ error: "Erro ao buscar grupos" });
+    }
   }
 );
 
@@ -558,29 +590,24 @@ app.post(
   "/grupos",
   autenticarToken,
   verificarAutorizacao("grupos"),
-  (req, res) => {
+  async (req, res) => {
     const { nome, telasPermitidas } = req.body;
 
-    // Validar dados
     if (!nome) {
       return res.status(400).json({ error: "Nome é obrigatório" });
     }
 
-    // Em um ambiente real, inseriríamos no PostgreSQL
-    // Exemplo: const result = await pool.query('INSERT INTO grupos (nome, telas_permitidas) VALUES ($1, $2) RETURNING *', [nome, telasPermitidas]);
+    try {
+      const result = await pool.query(
+        'INSERT INTO grupos (id, nome, telas_permitidas) VALUES ($1, $2, $3) RETURNING *',
+        [uuidv4(), nome, telasPermitidas || []]
+      );
 
-    const novoGrupo = {
-      id: uuidv4(),
-      nome,
-      telasPermitidas: telasPermitidas || [],
-    };
-
-    gruposSimulados.push(novoGrupo);
-
-    // Simular um pequeno atraso
-    setTimeout(() => {
-      res.status(201).json(novoGrupo);
-    }, 300);
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Erro ao criar grupo:", error);
+      res.status(500).json({ error: "Erro ao criar grupo" });
+    }
   }
 );
 
@@ -588,31 +615,25 @@ app.patch(
   "/grupos/:id",
   autenticarToken,
   verificarAutorizacao("grupos"),
-  (req, res) => {
+  async (req, res) => {
     const { id } = req.params;
     const { nome, telasPermitidas } = req.body;
 
-    // Em um ambiente real, atualizaríamos no PostgreSQL
-    // Exemplo: await pool.query('UPDATE grupos SET nome = $1, telas_permitidas = $2 WHERE id = $3 RETURNING *', [nome, telasPermitidas, id]);
+    try {
+      const result = await pool.query(
+        'UPDATE grupos SET nome = COALESCE($1, nome), telas_permitidas = COALESCE($2, telas_permitidas) WHERE id = $3 RETURNING *',
+        [nome, telasPermitidas, id]
+      );
 
-    const grupoIndex = gruposSimulados.findIndex((g) => g.id === id);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Grupo não encontrado" });
+      }
 
-    if (grupoIndex === -1) {
-      return res.status(404).json({ error: "Grupo não encontrado" });
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Erro ao atualizar grupo:", error);
+      res.status(500).json({ error: "Erro ao atualizar grupo" });
     }
-
-    const grupoAtualizado = {
-      ...gruposSimulados[grupoIndex],
-      ...(nome && { nome }),
-      ...(telasPermitidas && { telasPermitidas }),
-    };
-
-    gruposSimulados[grupoIndex] = grupoAtualizado;
-
-    // Simular um pequeno atraso
-    setTimeout(() => {
-      res.json(grupoAtualizado);
-    }, 300);
   }
 );
 
@@ -620,24 +641,21 @@ app.delete(
   "/grupos/:id",
   autenticarToken,
   verificarAutorizacao("grupos"),
-  (req, res) => {
+  async (req, res) => {
     const { id } = req.params;
 
-    // Em um ambiente real, removeríamos do PostgreSQL
-    // Exemplo: await pool.query('DELETE FROM grupos WHERE id = $1', [id]);
+    try {
+      const result = await pool.query('DELETE FROM grupos WHERE id = $1', [id]);
 
-    const grupoIndex = gruposSimulados.findIndex((g) => g.id === id);
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "Grupo não encontrado" });
+      }
 
-    if (grupoIndex === -1) {
-      return res.status(404).json({ error: "Grupo não encontrado" });
-    }
-
-    gruposSimulados.splice(grupoIndex, 1);
-
-    // Simular um pequeno atraso
-    setTimeout(() => {
       res.status(204).end();
-    }, 300);
+    } catch (error) {
+      console.error("Erro ao deletar grupo:", error);
+      res.status(500).json({ error: "Erro ao deletar grupo" });
+    }
   }
 );
 
@@ -720,4 +738,5 @@ app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
 
+export { pool };
 export default app;

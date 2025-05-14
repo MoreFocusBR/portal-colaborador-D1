@@ -20,6 +20,7 @@ import ConfirmationModal from '../../components/Modal/ConfirmationModal';
 import { useNotification } from '../../components/Notification/NotificationSystem';
 import useUsuariosStore, { Usuario } from '../../store/usuariosStore';
 import useGruposStore from '../../store/gruposStore';
+import UsuarioModalForm from './UsuarioModalForm';
 
 const GerenciamentoUsuarios: React.FC = () => {
   const { showNotification } = useNotification();
@@ -135,10 +136,14 @@ const GerenciamentoUsuarios: React.FC = () => {
     if (usuario) {
       setIsEditing(true);
       setCurrentUsuario(usuario);
+      // Filtrar apenas IDs de grupos que existem nas opções
+      const gruposValidos = Array.isArray(usuario.grupos)
+        ? usuario.grupos.filter(gid => grupos.some(g => g.id === gid))
+        : [];
       setFormValues({
         nome: usuario.nome,
         email: usuario.email,
-        grupos: Array.isArray(usuario.grupos) ? usuario.grupos : [] // Garantir que grupos seja um array
+        grupos: gruposValidos
       });
       setFormErrors({});
       setOpenForm(true);
@@ -175,9 +180,8 @@ const GerenciamentoUsuarios: React.FC = () => {
   const handleFormChange = (id: string, value: any) => {
     setFormValues(prev => ({
       ...prev,
-      [id]: value
+      [id]: id === 'grupos' ? (Array.isArray(value) ? value : []) : value
     }));
-    
     // Limpar erro do campo se foi preenchido
     if (formErrors[id] && value) {
       setFormErrors(prev => ({
@@ -288,7 +292,7 @@ const GerenciamentoUsuarios: React.FC = () => {
       type: 'select' as const,
       multiple: true, // Permitir múltipla seleção
       required: false,
-      options: grupos.map(grupo => ({ value: grupo.id, label: grupo.nome })),
+      options: grupos.filter(grupo => !!grupo.id).map(grupo => ({ value: grupo.id, label: grupo.nome })),
       fullWidth: true
     }
   ];
@@ -323,39 +327,36 @@ const GerenciamentoUsuarios: React.FC = () => {
       />
       
       {/* Modal de formulário */}
-      <Dialog 
-        open={openForm} 
+      <UsuarioModalForm
+        open={openForm}
         onClose={handleCloseForm}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          {isEditing ? 'Editar Usuário' : 'Adicionar Usuário'}
-        </DialogTitle>
-        <DialogContent>
-          <FormComponent
-            fields={formFields}
-            values={formValues}
-            errors={formErrors}
-            onChange={handleFormChange}
-            onSubmit={handleSaveUsuario} // onSubmit é obrigatório
-            submitButtonText="" // Esconder texto do botão para não exibi-lo
-            cancelButtonText=""  // Esconder texto do botão para não exibi-lo
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseForm} color="inherit">
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleSaveUsuario} 
-            variant="contained" 
-            color="primary"
-          >
-            Salvar
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onSave={async (data) => {
+          if (isEditing && currentUsuario && currentUsuario.id) {
+            await atualizarUsuario(currentUsuario.id, {
+              nome: data.nome,
+              email: data.email,
+              grupos: data.grupos
+            });
+            showNotification('Usuário atualizado com sucesso', 'success');
+          } else {
+            await adicionarUsuario({
+              nome: data.nome,
+              email: data.email,
+              grupos: data.grupos,
+              ultimaAtividade: new Date().toISOString()
+            });
+            showNotification('Usuário adicionado com sucesso', 'success');
+          }
+          setOpenForm(false);
+        }}
+        initialValues={{
+          nome: formValues.nome || '',
+          email: formValues.email || '',
+          grupos: Array.isArray(formValues.grupos) ? formValues.grupos : []
+        }}
+        gruposOptions={grupos.filter(grupo => !!grupo.id).map(grupo => ({ value: grupo.id, label: grupo.nome }))}
+        loading={loading}
+      />
       
       {/* Modal de confirmação de exclusão */}
       <ConfirmationModal

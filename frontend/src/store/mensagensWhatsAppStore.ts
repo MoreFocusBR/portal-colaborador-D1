@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getAuthToken } from "../utils/auth";
 
 // Definição dos tipos para as mensagens WhatsApp
 export interface MensagemWhatsApp {
@@ -18,8 +19,7 @@ interface MensagensWhatsAppState {
   toggleAtivoStatus: (id: string) => Promise<void>;
 }
 
-const varLocalStorage = JSON.parse(localStorage["auth-storage"]);
-const token = varLocalStorage.state.token;
+const token = getAuthToken();
 
 // Criação do store com Zustand
 const useMensagensWhatsAppStore = create<MensagensWhatsAppState>(

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getAuthToken } from "../utils/auth";
 
 // Definição dos tipos para as mensagens de Email
 export interface MensagemEmail {
@@ -8,8 +9,9 @@ export interface MensagemEmail {
   ativo: boolean;
 }
 
-const varLocalStorage = JSON.parse(localStorage["auth-storage"]);
-const token = varLocalStorage.state.token;
+const authStorage = localStorage.getItem("auth-storage");
+const varLocalStorage = authStorage ? JSON.parse(authStorage) : null;
+const token = getAuthToken();
 
 interface MensagensEmailState {
   mensagens: MensagemEmail[];

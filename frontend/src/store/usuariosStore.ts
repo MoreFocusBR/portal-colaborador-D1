@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getAuthToken } from "../utils/auth";
 
 // Definição dos tipos para usuários
 export interface Usuario {
@@ -9,8 +10,9 @@ export interface Usuario {
   ultimaAtividade: string;
 }
 
-const varLocalStorage = JSON.parse(localStorage["auth-storage"]);
-const token = varLocalStorage.state.token;
+const authStorage = localStorage.getItem("auth-storage");
+const varLocalStorage = authStorage ? JSON.parse(authStorage) : null;
+const token = getAuthToken();
 
 interface UsuariosState {
   usuarios: Usuario[];

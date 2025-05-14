@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getAuthToken } from "../utils/auth";
 
 // Definição dos tipos para grupos
 export interface Grupo {
@@ -7,8 +8,9 @@ export interface Grupo {
   telasPermitidas: string[];
 }
 
-const varLocalStorage = JSON.parse(localStorage["auth-storage"]);
-const token = varLocalStorage.state.token;
+const authStorage = localStorage.getItem("auth-storage");
+const varLocalStorage = authStorage ? JSON.parse(authStorage) : null;
+const token = getAuthToken();
 
 interface GruposState {
   grupos: Grupo[];
@@ -127,11 +129,16 @@ const useGruposStore = create<GruposState>((set, get) => ({
       }
 
       const grupoAtualizado = await response.json();
+      // Garantir camelCase no frontend
+      const grupoCamelCase = {
+        ...grupoAtualizado,
+        telasPermitidas: grupoAtualizado.telasPermitidas || grupoAtualizado.telas_permitidas || [],
+      };
 
       // Atualizar o estado local
       set((state) => ({
         grupos: state.grupos.map((g) =>
-          g.id === id ? { ...g, ...grupoAtualizado } : g
+          g.id === id ? { ...g, ...grupoCamelCase } : g
         ),
         loading: false,
       }));

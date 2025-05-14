@@ -13,7 +13,16 @@ import {
   ListItemText,
   Container,
   CssBaseline,
-  Button
+  Button,
+  Chip,
+  Menu,
+  MenuItem,
+  Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
@@ -37,11 +46,27 @@ import Login from './pages/Login/Login';
 import AcessoNegado from './pages/AcessoNegado/AcessoNegado';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import useAuthStore from './store/authStore';
+import { getAuthToken } from "./utils/auth";
+
+const telasDisponiveis = [
+  { id: 'transacoes', nome: 'Transações Financeiras' },
+  { id: 'mensagens-whatsapp', nome: 'Mensagens WhatsApp' },
+  { id: 'mensagens-email', nome: 'Mensagens E-mail' },
+  { id: 'usuarios', nome: 'Gerenciamento de Usuários' },
+  { id: 'grupos', nome: 'Grupos de Usuários' },
+  { id: 'vendas', nome: 'Vendas' }
+];
 
 const App: React.FC = () => {
   const [open, setOpen] = React.useState(false);
-  const { isAuthenticated, usuario, logout } = useAuthStore();
+  const { isAuthenticated, usuario, logout, permissoes } = useAuthStore();
   const theme = useTheme();
+  const isSmallScreen = theme.breakpoints.down('sm');
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [openSenhaModal, setOpenSenhaModal] = React.useState(false);
+  const [novaSenha, setNovaSenha] = React.useState('');
+  const [confirmarSenha, setConfirmarSenha] = React.useState('');
+  const [erroSenha, setErroSenha] = React.useState('');
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -54,6 +79,83 @@ const App: React.FC = () => {
   const handleLogout = () => {
     logout();
   };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => setAnchorEl(null);
+
+  const handleAbrirModalSenha = () => {
+    setOpenSenhaModal(true);
+    handleMenuClose();
+  };
+
+  const handleFecharModalSenha = () => {
+    setOpenSenhaModal(false);
+    setNovaSenha('');
+    setConfirmarSenha('');
+    setErroSenha('');
+  };
+
+  const handleSalvarSenha = async () => {
+    if (!novaSenha || novaSenha !== confirmarSenha) {
+      setErroSenha('As senhas não coincidem');
+      return;
+    }
+    setErroSenha('');
+    // Chame o endpoint de alteração de senha aqui
+    try {
+      const userId = usuario?.id;
+      const token = getAuthToken();
+      const resp = await fetch(`http://localhost:3001/usuarios/${userId}/senha`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ senha: novaSenha })
+      });
+      if (!resp.ok) {
+        setErroSenha('Erro ao alterar senha');
+        return;
+      }
+      handleFecharModalSenha();
+      // Opcional: mostrar notificação de sucesso
+    } catch {
+      setErroSenha('Erro ao alterar senha');
+    }
+  };
+
+  const renderTelasPermitidas = (telasIds: string[] = []) => {
+    return (
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+        {(Array.isArray(telasIds) ? telasIds : []).map(telaId => {
+          const tela = telasDisponiveis.find(t => t.id === telaId);
+          return (
+            <Chip 
+              key={telaId} 
+              label={tela ? tela.nome : telaId} 
+              size="small" 
+              color="primary" 
+              variant="outlined" 
+            />
+          );
+        })}
+      </Box>
+    );
+  };
+
+  const menuItems = [
+    { telaId: 'transacoes', label: 'Transações Financeiras', icon: <AttachMoneyIcon />, to: '/transacoes' },
+    { telaId: 'mensagens-whatsapp', label: 'Mensagens WhatsApp', icon: <WhatsAppIcon />, to: '/mensagens-whatsapp' },
+    { telaId: 'mensagens-email', label: 'Mensagens E-mail', icon: <EmailIcon />, to: '/mensagens-email' },
+    { telaId: 'usuarios', label: 'Gerenciamento de Usuários', icon: <PeopleIcon />, to: '/usuarios' },
+    { telaId: 'grupos', label: 'Grupos de Usuários', icon: <GroupsIcon />, to: '/grupos' },
+    { telaId: 'vendas', label: 'Vendas', icon: <ShoppingCartIcon />, to: '/vendas' },
+  ];
+
+  const menuItemsPermitidos = menuItems.filter(item => permissoes.includes(item.telaId));
 
   return (
     <AppProvider>
@@ -96,20 +198,25 @@ const App: React.FC = () => {
                     <MenuIcon />
                   </IconButton>
                   <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-                    Sistema de Gestão
+                    Intranet - D1FITNESS
                   </Typography>
                   {usuario && (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Typography variant="body1" sx={{ mr: 2 }}>
+                      <Typography
+                        variant="body1"
+                        sx={{ mr: 2, cursor: 'pointer' }}
+                        onClick={handleMenuOpen}
+                      >
                         Olá, {usuario.nome}
                       </Typography>
-                      <Button 
-                        color="inherit" 
-                        onClick={handleLogout}
-                        startIcon={<LogoutIcon />}
+                      <Menu
+                        anchorEl={anchorEl}
+                        open={Boolean(anchorEl)}
+                        onClose={handleMenuClose}
                       >
-                        Sair
-                      </Button>
+                        <MenuItem onClick={handleAbrirModalSenha}>Alterar Senha</MenuItem>
+                        <MenuItem onClick={handleLogout}>Sair</MenuItem>
+                      </Menu>
                     </Box>
                   )}
                 </Toolbar>
@@ -158,42 +265,12 @@ const App: React.FC = () => {
                 </Toolbar>
                 <Divider />
                 <List>
-                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/transacoes" />)}>
-                    <ListItemIcon>
-                      <AttachMoneyIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Transações Financeiras" />
-                  </ListItem>
-                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/mensagens-whatsapp" />)}>
-                    <ListItemIcon>
-                      <WhatsAppIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Mensagens WhatsApp" />
-                  </ListItem>
-                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/mensagens-email" />)}>
-                    <ListItemIcon>
-                      <EmailIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Mensagens E-mail" />
-                  </ListItem>
-                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/usuarios" />)}>
-                    <ListItemIcon>
-                      <PeopleIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Gerenciamento de Usuários" />
-                  </ListItem>
-                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/grupos" />)}>
-                    <ListItemIcon>
-                      <GroupsIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Grupos de Usuários" />
-                  </ListItem>
-                  <ListItem button component={React.forwardRef<HTMLAnchorElement, any>((props, ref) => <Link {...props} ref={ref} to="/vendas" />)}>
-                    <ListItemIcon>
-                      <ShoppingCartIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Vendas" />
-                  </ListItem>
+                  {menuItemsPermitidos.map(item => (
+                    <ListItem key={item.telaId} component={Link} to={item.to}>
+                      <ListItemIcon>{item.icon}</ListItemIcon>
+                      <ListItemText primary={item.label} />
+                    </ListItem>
+                  ))}
                 </List>
               </Drawer>
             </>
@@ -203,8 +280,8 @@ const App: React.FC = () => {
             sx={{
               flexGrow: 1,
               p: 3,
-              width: { sm: isAuthenticated ? `calc(100% - ${open ? 240 : 72}px)` : '100%' },
-              marginLeft: { sm: isAuthenticated ? `${open ? 240 : 72}px` : 0 },
+              width: isSmallScreen ? '100%' : `calc(100%)`,
+              marginLeft: '-180px',
               transition: (theme) =>
                 theme.transitions.create(['width', 'margin'], {
                   easing: theme.transitions.easing.sharp,
@@ -265,6 +342,33 @@ const App: React.FC = () => {
             </Container>
           </Box>
         </Box>
+        <Dialog open={openSenhaModal} onClose={handleFecharModalSenha}>
+          <DialogTitle>Alterar Senha</DialogTitle>
+          <DialogContent>
+            <TextField
+              label="Nova Senha"
+              type="password"
+              fullWidth
+              margin="normal"
+              value={novaSenha}
+              onChange={e => setNovaSenha(e.target.value)}
+            />
+            <TextField
+              label="Confirmar Nova Senha"
+              type="password"
+              fullWidth
+              margin="normal"
+              value={confirmarSenha}
+              onChange={e => setConfirmarSenha(e.target.value)}
+              error={!!erroSenha}
+              helperText={erroSenha}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleFecharModalSenha}>Cancelar</Button>
+            <Button onClick={handleSalvarSenha} variant="contained">Salvar</Button>
+          </DialogActions>
+        </Dialog>
       </Router>
     </AppProvider>
   );

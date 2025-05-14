@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getAuthToken } from "../utils/auth";
 
 // Definição dos tipos para vendas
 export interface Venda {
@@ -11,8 +12,7 @@ export interface Venda {
   totalItens: number;
 }
 
-const varLocalStorage = JSON.parse(localStorage["auth-storage"]);
-const token = varLocalStorage.state.token;
+const token = getAuthToken();
 
 interface VendasState {
   vendas: Venda[];

@@ -111,7 +111,7 @@ const FormComponent: React.FC<FormComponentProps> = ({
                     onChange={handleSelectChange(field.id)}
                   >
                     {field.options?.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
+                      <MenuItem key={option.value || option.label} value={option.value || ''}>
                         {option.label}
                       </MenuItem>
                     ))}
