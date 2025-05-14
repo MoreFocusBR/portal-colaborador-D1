@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
-import dashboardRouter from './routes/dashboard';
+//import dashboardRouter from './routes/dashboard';
 
 // Extender a interface Request para incluir a propriedade usuario
 declare global {
@@ -48,7 +48,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 // Integrar rotas do dashboard
-app.use('/dashboard', dashboardRouter);
+//app.use('/dashboard', dashboardRouter);
 
 // Configuração da conexão com o PostgreSQL
 // Nota: Em um ambiente de produção, estas credenciais viriam de variáveis de ambiente
