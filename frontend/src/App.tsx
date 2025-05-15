@@ -35,13 +35,16 @@ import EmailIcon from '@mui/icons-material/Email';
 import PeopleIcon from '@mui/icons-material/People';
 import GroupsIcon from '@mui/icons-material/Groups';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import EventIcon from '@mui/icons-material/Event'; // Ícone para Gestão de Eventos
 import AppProvider from './components/AppProvider/AppProvider';
+import Dashboard from './pages/Dashboard/Dashboard';
 import TransacoesFinanceiras from './pages/TransacoesFinanceiras/TransacoesFinanceiras';
 import MensagensWhatsApp from './pages/MensagensWhatsApp/MensagensWhatsApp';
 import MensagensEmail from './pages/MensagensEmail/MensagensEmail';
 import GerenciamentoUsuarios from './pages/GerenciamentoUsuarios/GerenciamentoUsuarios';
 import GruposUsuarios from './pages/GruposUsuarios/GruposUsuarios';
 import TelaVendas from './pages/Vendas/TelaVendas';
+import GestaoEventos from './pages/GestaoEventos/GestaoEventos'; // Importar a nova tela
 import Login from './pages/Login/Login';
 import AcessoNegado from './pages/AcessoNegado/AcessoNegado';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
@@ -54,7 +57,8 @@ const telasDisponiveis = [
   { id: 'mensagens-email', nome: 'Mensagens E-mail' },
   { id: 'usuarios', nome: 'Gerenciamento de Usuários' },
   { id: 'grupos', nome: 'Grupos de Usuários' },
-  { id: 'vendas', nome: 'Vendas' }
+  { id: 'vendas', nome: 'Vendas' },
+  { id: 'gestao-eventos', nome: 'Gestão de Eventos' } // Adicionar nova tela
 ];
 
 const App: React.FC = () => {
@@ -153,6 +157,7 @@ const App: React.FC = () => {
     { telaId: 'usuarios', label: 'Gerenciamento de Usuários', icon: <PeopleIcon />, to: '/usuarios' },
     { telaId: 'grupos', label: 'Grupos de Usuários', icon: <GroupsIcon />, to: '/grupos' },
     { telaId: 'vendas', label: 'Vendas', icon: <ShoppingCartIcon />, to: '/vendas' },
+    { telaId: 'gestao-eventos', label: 'Gestão de Eventos', icon: <EventIcon />, to: '/gestao-eventos' } // Adicionar novo item de menu
   ];
 
   const menuItemsPermitidos = menuItems.filter(item => permissoes.includes(item.telaId));
@@ -198,7 +203,7 @@ const App: React.FC = () => {
                     <MenuIcon />
                   </IconButton>
                   <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-                    Intranet - D1FITNESS
+                    D1FITNESS - Portal do Colaborador
                   </Typography>
                   {usuario && (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -296,8 +301,8 @@ const App: React.FC = () => {
                 <Route path="/acesso-negado" element={<AcessoNegado />} />
                 
                 <Route path="/" element={
-                  <ProtectedRoute telaId="transacoes">
-                    <TransacoesFinanceiras />
+                  <ProtectedRoute telaId="tela-inicial" > {/* Default route */} 
+                    <Dashboard />
                   </ProtectedRoute>
                 } />
                 
@@ -334,6 +339,12 @@ const App: React.FC = () => {
                 <Route path="/vendas" element={
                   <ProtectedRoute telaId="vendas">
                     <TelaVendas />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/gestao-eventos" element={ // Adicionar nova rota
+                  <ProtectedRoute telaId="gestao-eventos">
+                    <GestaoEventos />
                   </ProtectedRoute>
                 } />
                 
@@ -375,3 +386,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

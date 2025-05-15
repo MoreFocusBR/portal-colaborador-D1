@@ -6,6 +6,10 @@ import { v4 as uuidv4 } from "uuid";
 import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
 //import dashboardRouter from './routes/dashboard';
 
+// Importar controllers e middlewares necessários
+import eventoController from "./controllers/eventoController";
+import uploadMiddleware from "./middlewares/uploadMiddleware";
+
 // Extender a interface Request para incluir a propriedade usuario
 declare global {
   namespace Express {
@@ -46,14 +50,14 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+app.use("/uploads", express.static("uploads")); // Servir arquivos estáticos da pasta uploads
 
 // Integrar rotas do dashboard
 //app.use('/dashboard', dashboardRouter);
 
 // Configuração da conexão com o PostgreSQL
-// Nota: Em um ambiente de produção, estas credenciais viriam de variáveis de ambiente
 const connectionString =
-  "postgres://d1_orquestrador_db_user:m0rolZgKrck23Yd1p7rS72euVOtqxdI7@200.80.111.222:10066/d1_orquestrador_db";
+  process.env.DATABASE_URL || "postgres://d1_orquestrador_db_user:m0rolZgKrck23Yd1p7rS72euVOtqxdI7@200.80.111.222:10066/d1_orquestrador_db";
 
 // Criar pool de conexões
 const pool = new Pool({
@@ -135,6 +139,7 @@ const gruposSimulados = [
       "usuarios",
       "grupos",
       "vendas",
+      "gestao-eventos" // Adicionar permissão para gestão de eventos
     ],
   },
   {
@@ -237,7 +242,7 @@ function isUsuarioToken(decoded: any): decoded is UsuarioToken {
 }
 
 // Middleware de autorização
-const verificarAutorizacao = (telaId: string) => {
+const verificarAutorizacao = (telaId: string | string[]) => { // Aceita string ou array de strings para permissões
   return async (
     req: express.Request,
     res: express.Response,
@@ -258,9 +263,17 @@ const verificarAutorizacao = (telaId: string) => {
       );
       // Verificar se alguma permissão bate com a tela
       for (const row of result.rows) {
-        if ((row.telas_permitidas || []).includes(telaId)) {
-          autorizado = true;
-          break;
+        const permissoesDoGrupo = row.telas_permitidas || [];
+        if (Array.isArray(telaId)) { // Se telaId for um array, verifica se ALGUMA permissão é concedida
+            if (telaId.some(tId => permissoesDoGrupo.includes(tId))) {
+                autorizado = true;
+                break;
+            }
+        } else { // Se telaId for uma string, verifica essa permissão específica
+            if (permissoesDoGrupo.includes(telaId)) {
+                autorizado = true;
+                break;
+            }
         }
       }
       if (!autorizado) {
@@ -275,7 +288,7 @@ const verificarAutorizacao = (telaId: string) => {
 };
 
 // Rota de autenticação
-app.post("/auth/login", async (req, res) => {
+app.post("/api/auth/login", async (req, res) => { // Adicionado /api para padronização
   const { email, senha } = req.body;
 
   // Validar dados
@@ -292,7 +305,7 @@ app.post("/auth/login", async (req, res) => {
     const usuario = result.rows[0];
 
     // Verificar se usuário existe e se a senha confere
-    if (!usuario || usuario.senha !== senha) {
+    if (!usuario || usuario.senha !== senha) { // Em produção, usar bcrypt.compare
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
 
@@ -317,13 +330,11 @@ app.post("/auth/login", async (req, res) => {
     // Remover senha antes de enviar
     const { senha: _, ...usuarioSemSenha } = usuario;
 
-    // Simular um pequeno atraso
-    setTimeout(() => {
-      res.json({
-        token,
-        usuario: usuarioSemSenha,
-      });
-    }, 500);
+    res.json({
+      token,
+      usuario: usuarioSemSenha,
+    });
+
   } catch (error) {
     console.error("Erro ao autenticar usuário:", error);
     res.status(500).json({ error: "Erro ao autenticar usuário" });
@@ -332,41 +343,38 @@ app.post("/auth/login", async (req, res) => {
 
 // Rota para obter transações financeiras (protegida)
 app.get(
-  "/interExtratoD1",
+  "/api/interExtratoD1", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("transacoes"),
   async (req, res) => {
-  
-// Chama a API externa
+    try {
+      // Chama a API externa
       const response = await fetch('http://200.80.111.222:10065/interExtratoD1', {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
       });
-
-    
-      res.json(response);
-    
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+        console.error("Erro ao buscar extrato D1:", error);
+        res.status(500).json({ error: "Erro ao buscar extrato D1" });
+    }
   }
 );
 
 // Rota para obter mensagens WhatsApp (protegida)
 app.get(
-  "/mensagens-whatsapp",
+  "/api/mensagens-whatsapp", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("mensagens-whatsapp"),
   async (req, res) => {
-    // Em um ambiente real, buscaríamos do PostgreSQL
-    // Exemplo: const result = await pool.query('SELECT * FROM mensagens_whatsapp');
-    //const { ativo, texto,  } = req.query;
     try {
       let mensagensWhats = await pool.query(
         'SELECT * FROM "RastreioStatusWhats"'
       );
-      let mensagensWhatsFiltradas = [...mensagensWhats.rows];
-
-      res.json(mensagensWhatsFiltradas);
+      res.json(mensagensWhats.rows);
     } catch (error) {
       console.error("Erro ao buscar mensagens WhatsApp:", error);
       return res
@@ -378,77 +386,55 @@ app.get(
 
 // Rota para atualizar status de mensagem WhatsApp (protegida)
 app.patch(
-  "/mensagens-whatsapp/:id",
+  "/api/mensagens-whatsapp/:id", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("mensagens-whatsapp"),
   async (req, res) => {
     const { id } = req.params;
     const { ativo } = req.body;
-
-    let mensagensWhats = await pool.query('SELECT * FROM "RastreioStatusWhats"');
-    let mensagensWhatsFiltradas = [...mensagensWhats.rows];
-
-    // Em um ambiente real, atualizaríamos no PostgreSQL
-    // Exemplo: await pool.query('UPDATE mensagens_whatsapp SET ativo = $1 WHERE id = $2', [ativo, id]);
-
-    const mensagemIndex = mensagensWhatsFiltradas.findIndex((m) => m.id === id);
-
-    if (mensagemIndex === -1) {
-      return res.status(404).json({ error: "Mensagem não encontrada" });
+    try {
+        const result = await pool.query('UPDATE "RastreioStatusWhats" SET ativo = $1 WHERE id = $2 RETURNING *', [ativo, id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Mensagem WhatsApp não encontrada" });
+        }
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error("Erro ao atualizar mensagem WhatsApp:", error);
+        res.status(500).json({ error: "Erro ao atualizar mensagem WhatsApp" });
     }
-
-    mensagensWhatsFiltradas[mensagemIndex].ativo = ativo;
-
-    res.json(mensagensWhatsFiltradas[mensagemIndex]);
   }
 );
 
 // Rota para obter mensagens Email (protegida)
 app.get(
-  "/mensagens-email",
+  "/api/mensagens-email", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("mensagens-email"),
   (req, res) => {
-    // Em um ambiente real, buscaríamos do PostgreSQL
-    // Exemplo: const result = await pool.query('SELECT * FROM mensagens_email');
-
-    // Simular um pequeno atraso para demonstrar o estado de carregamento
-    setTimeout(() => {
-      res.json(mensagensEmailSimuladas);
-    }, 500);
+    res.json(mensagensEmailSimuladas); // Mantendo simulação por enquanto
   }
 );
 
 // Rota para atualizar status de mensagem Email (protegida)
 app.patch(
-  "/mensagens-email/:id",
+  "/api/mensagens-email/:id", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("mensagens-email"),
   (req, res) => {
     const { id } = req.params;
     const { ativo } = req.body;
-
-    // Em um ambiente real, atualizaríamos no PostgreSQL
-    // Exemplo: await pool.query('UPDATE mensagens_email SET ativo = $1 WHERE id = $2', [ativo, id]);
-
     const mensagemIndex = mensagensEmailSimuladas.findIndex((m) => m.id === id);
-
     if (mensagemIndex === -1) {
       return res.status(404).json({ error: "Mensagem não encontrada" });
     }
-
     mensagensEmailSimuladas[mensagemIndex].ativo = ativo;
-
-    // Simular um pequeno atraso
-    setTimeout(() => {
-      res.json(mensagensEmailSimuladas[mensagemIndex]);
-    }, 300);
+    res.json(mensagensEmailSimuladas[mensagemIndex]);
   }
 );
 
 // Rotas para gerenciamento de usuários (protegidas)
 app.get(
-  "/usuarios",
+  "/api/usuarios", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("usuarios"),
   async (req, res) => {
@@ -463,22 +449,19 @@ app.get(
 );
 
 app.post(
-  "/usuarios",
+  "/api/usuarios", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("usuarios"),
   async (req, res) => {
-    const { nome, email, grupos } = req.body;
-
-    if (!nome || !email) {
-      return res.status(400).json({ error: "Nome e e-mail são obrigatórios" });
+    const { nome, email, senha, grupos } = req.body; // Adicionado senha
+    if (!nome || !email || !senha) {
+      return res.status(400).json({ error: "Nome, e-mail e senha são obrigatórios" });
     }
-
     try {
       const result = await pool.query(
         'INSERT INTO usuarios (id, nome, email, senha, grupos, ultima_atividade) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nome, email, grupos, ultima_atividade',
-        [uuidv4(), nome, email, 'senha123', grupos || [], new Date().toISOString()]
+        [uuidv4(), nome, email, senha, grupos || [], new Date().toISOString()] // Em produção, hashear senha
       );
-
       res.status(201).json(result.rows[0]);
     } catch (error) {
       console.error("Erro ao criar usuário:", error);
@@ -488,23 +471,20 @@ app.post(
 );
 
 app.patch(
-  "/usuarios/:id",
+  "/api/usuarios/:id", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("usuarios"),
   async (req, res) => {
     const { id } = req.params;
     const { nome, email, grupos } = req.body;
-
     try {
       const result = await pool.query(
         'UPDATE usuarios SET nome = COALESCE($1, nome), email = COALESCE($2, email), grupos = COALESCE($3, grupos) WHERE id = $4 RETURNING id, nome, email, grupos, ultima_atividade',
         [nome, email, grupos, id]
       );
-
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "Usuário não encontrado" });
       }
-
       res.json(result.rows[0]);
     } catch (error) {
       console.error("Erro ao atualizar usuário:", error);
@@ -514,19 +494,16 @@ app.patch(
 );
 
 app.delete(
-  "/usuarios/:id",
+  "/api/usuarios/:id", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("usuarios"),
   async (req, res) => {
     const { id } = req.params;
-
     try {
       const result = await pool.query('DELETE FROM usuarios WHERE id = $1', [id]);
-
       if (result.rowCount === 0) {
         return res.status(404).json({ error: "Usuário não encontrado" });
       }
-
       res.status(204).end();
     } catch (error) {
       console.error("Erro ao deletar usuário:", error);
@@ -537,12 +514,11 @@ app.delete(
 
 // Endpoint para alteração de senha do usuário autenticado
 app.patch(
-  "/usuarios/:id/senha",
+  "/api/usuarios/:id/senha", // Adicionado /api
   autenticarToken,
   async (req, res) => {
     const { id } = req.params;
     const { senha } = req.body;
-    // Só permite alterar a própria senha
     if (!req.usuario || req.usuario.id !== id) {
       return res.status(403).json({ error: "Acesso negado" });
     }
@@ -550,7 +526,7 @@ app.patch(
       return res.status(400).json({ error: "Senha inválida" });
     }
     try {
-      await pool.query('UPDATE usuarios SET senha = $1 WHERE id = $2', [senha, id]);
+      await pool.query('UPDATE usuarios SET senha = $1 WHERE id = $2', [senha, id]); // Em produção, hashear senha
       res.status(204).end();
     } catch (error) {
       console.error("Erro ao alterar senha:", error);
@@ -561,8 +537,9 @@ app.patch(
 
 // Rotas para gerenciamento de grupos (protegidas)
 app.get(
-  "/grupos",
+  "/api/grupos", // Adicionado /api
   autenticarToken,
+  // verificarAutorizacao("grupos"), // Acesso a grupos pode ser mais aberto para listagem, dependendo da regra
   async (req, res) => {
     try {
       let query = 'SELECT * FROM grupos';
@@ -573,7 +550,6 @@ app.get(
         params = [ids];
       }
       const result = await pool.query(query, params);
-      // Mapear para camelCase
       const grupos = result.rows.map(g => ({
         ...g,
         telasPermitidas: g.telas_permitidas || [],
@@ -587,22 +563,19 @@ app.get(
 );
 
 app.post(
-  "/grupos",
+  "/api/grupos", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("grupos"),
   async (req, res) => {
     const { nome, telasPermitidas } = req.body;
-
     if (!nome) {
       return res.status(400).json({ error: "Nome é obrigatório" });
     }
-
     try {
       const result = await pool.query(
         'INSERT INTO grupos (id, nome, telas_permitidas) VALUES ($1, $2, $3) RETURNING *',
         [uuidv4(), nome, telasPermitidas || []]
       );
-
       res.status(201).json(result.rows[0]);
     } catch (error) {
       console.error("Erro ao criar grupo:", error);
@@ -612,23 +585,20 @@ app.post(
 );
 
 app.patch(
-  "/grupos/:id",
+  "/api/grupos/:id", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("grupos"),
   async (req, res) => {
     const { id } = req.params;
     const { nome, telasPermitidas } = req.body;
-
     try {
       const result = await pool.query(
         'UPDATE grupos SET nome = COALESCE($1, nome), telas_permitidas = COALESCE($2, telas_permitidas) WHERE id = $3 RETURNING *',
         [nome, telasPermitidas, id]
       );
-
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "Grupo não encontrado" });
       }
-
       res.json(result.rows[0]);
     } catch (error) {
       console.error("Erro ao atualizar grupo:", error);
@@ -638,19 +608,16 @@ app.patch(
 );
 
 app.delete(
-  "/grupos/:id",
+  "/api/grupos/:id", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("grupos"),
   async (req, res) => {
     const { id } = req.params;
-
     try {
       const result = await pool.query('DELETE FROM grupos WHERE id = $1', [id]);
-
       if (result.rowCount === 0) {
         return res.status(404).json({ error: "Grupo não encontrado" });
       }
-
       res.status(204).end();
     } catch (error) {
       console.error("Erro ao deletar grupo:", error);
@@ -661,60 +628,43 @@ app.delete(
 
 // Rotas para gerenciamento de vendas (protegidas)
 app.get(
-  "/vendas",
+  "/api/vendas", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("vendas"),
   (req, res) => {
     const { periodo, status, numeroVenda } = req.query;
-
     let vendasFiltradas = [...vendasSimuladas];
-
-    // Aplicar filtros se fornecidos
     if (periodo) {
       const diasAtras = parseInt(periodo as string);
       const dataLimite = new Date();
       dataLimite.setDate(dataLimite.getDate() - diasAtras);
-
       vendasFiltradas = vendasFiltradas.filter(
         (v) => new Date(v.data) >= dataLimite
       );
     }
-
     if (status) {
       vendasFiltradas = vendasFiltradas.filter((v) => v.status === status);
     }
-
     if (numeroVenda) {
       vendasFiltradas = vendasFiltradas.filter((v) =>
         v.numero.includes(numeroVenda as string)
       );
     }
-
-    // Simular um pequeno atraso para demonstrar o estado de carregamento
-    setTimeout(() => {
-      res.json(vendasFiltradas);
-    }, 500);
+    res.json(vendasFiltradas);
   }
 );
 
 app.patch(
-  "/vendas/:id/status",
+  "/api/vendas/:id/status", // Adicionado /api
   autenticarToken,
   verificarAutorizacao("vendas"),
   (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
-
-    // Em um ambiente real, atualizaríamos no PostgreSQL
-    // Exemplo: await pool.query('UPDATE vendas SET status = $1 WHERE id = $2 RETURNING *', [status, id]);
-
     const vendaIndex = vendasSimuladas.findIndex((v) => v.id === id);
-
     if (vendaIndex === -1) {
       return res.status(404).json({ error: "Venda não encontrada" });
     }
-
-    // Verificar se o status atual é "Financeiro Validado"
     if (vendasSimuladas[vendaIndex].status !== "Financeiro Validado") {
       return res
         .status(400)
@@ -723,14 +673,47 @@ app.patch(
             'Apenas vendas com status "Financeiro Validado" podem ter o status alterado',
         });
     }
-
     vendasSimuladas[vendaIndex].status = status;
-
-    // Simular um pequeno atraso
-    setTimeout(() => {
-      res.json(vendasSimuladas[vendaIndex]);
-    }, 300);
+    res.json(vendasSimuladas[vendaIndex]);
   }
+);
+
+// ROTAS DE EVENTOS INTEGRADAS
+app.post(
+  "/api/eventos",
+  autenticarToken,
+  verificarAutorizacao("gestao-eventos"), // Permissão específica para gestão de eventos
+  uploadMiddleware.single("imagem"),
+  eventoController.criarEvento
+);
+
+app.get(
+  "/api/eventos",
+  autenticarToken,
+  verificarAutorizacao("gestao-eventos"), // Ou uma permissão mais genérica se todos puderem listar
+  eventoController.listarEventos
+);
+
+app.get(
+  "/api/eventos/:id",
+  autenticarToken,
+  verificarAutorizacao("gestao-eventos"), // Ou uma permissão mais genérica
+  eventoController.obterEvento
+);
+
+app.put(
+  "/api/eventos/:id",
+  autenticarToken,
+  verificarAutorizacao("gestao-eventos"),
+  uploadMiddleware.single("imagem"),
+  eventoController.atualizarEvento
+);
+
+app.delete(
+  "/api/eventos/:id",
+  autenticarToken,
+  verificarAutorizacao("gestao-eventos"),
+  eventoController.deletarEvento
 );
 
 // Iniciar o servidor
@@ -740,3 +723,4 @@ app.listen(PORT, () => {
 
 export { pool };
 export default app;
+

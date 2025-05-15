@@ -25,6 +25,7 @@ import useGruposStore, { Grupo } from '../../store/gruposStore';
 
 // Lista de telas disponíveis no sistema
 const telasDisponiveis = [
+  { id: 'tela-inicial', nome: 'Tela Incial' },
   { id: 'transacoes', nome: 'Transações Financeiras' },
   { id: 'mensagens-whatsapp', nome: 'Mensagens WhatsApp' },
   { id: 'mensagens-email', nome: 'Mensagens E-mail' },
