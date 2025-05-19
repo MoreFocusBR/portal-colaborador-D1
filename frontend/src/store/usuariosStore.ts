@@ -38,7 +38,7 @@ const useUsuariosStore = create<UsuariosState>((set, get) => ({
       set({ loading: true, error: null });
 
       // URL base da API
-      const url = "http://localhost:3001/usuarios";
+      const url = "http://localhost:3001/api/usuarios";
 
       // Fazer a requisição para a API
       const response = await fetch(url, {
@@ -73,7 +73,7 @@ const useUsuariosStore = create<UsuariosState>((set, get) => ({
       set({ loading: true, error: null });
 
       // URL base da API
-      const url = "http://localhost:3001/usuarios";
+      const url = "http://localhost:3001/api/usuarios";
 
       // Fazer a requisição para a API
       const response = await fetch(url, {
@@ -114,7 +114,7 @@ const useUsuariosStore = create<UsuariosState>((set, get) => ({
       set({ loading: true, error: null });
 
       // URL para atualizar o usuário
-      const url = `http://localhost:3001/usuarios/${id}`;
+      const url = `http://localhost:3001/api/usuarios/${id}`;
 
       // Fazer a requisição para a API
       const response = await fetch(url, {
@@ -157,7 +157,7 @@ const useUsuariosStore = create<UsuariosState>((set, get) => ({
       set({ loading: true, error: null });
 
       // URL para remover o usuário
-      const url = `http://localhost:3001/usuarios/${id}`;
+      const url = `http://localhost:3001/api/usuarios/${id}`;
 
       // Fazer a requisição para a API
       const response = await fetch(url, {

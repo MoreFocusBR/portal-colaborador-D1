@@ -31,7 +31,9 @@ const telasDisponiveis = [
   { id: 'mensagens-email', nome: 'Mensagens E-mail' },
   { id: 'usuarios', nome: 'Gerenciamento de Usuários' },
   { id: 'grupos', nome: 'Grupos de Usuários' },
-  { id: 'vendas', nome: 'Vendas' }
+  { id: 'vendas', nome: 'Vendas' },
+  { id: 'gestao-eventos', nome: 'Gestão de Eventos' },
+  { id: 'gestao-okr', nome: 'Gestão de OKR' }
 ];
 
 const GruposUsuarios: React.FC = () => {

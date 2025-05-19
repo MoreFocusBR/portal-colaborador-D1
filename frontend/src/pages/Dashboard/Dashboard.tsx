@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { eventoService, Evento } from '../../services/eventoService';
 import {
   Box,
   Card,
@@ -26,6 +27,24 @@ import {
 } from '@mui/icons-material';
 
 const Dashboard: React.FC = () => {
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const carregarEventos = async () => {
+      try {
+        const eventosData = await eventoService.listarEventos();
+        setEventos(eventosData);
+      } catch (error) {
+        console.error('Erro ao carregar eventos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    carregarEventos();
+  }, []);
+
   const objetivosEstrategicos = [
     {
       titulo: "EXCELÊNCIA EM VENDAS",
@@ -53,19 +72,6 @@ const Dashboard: React.FC = () => {
     }
   ];
 
-  const eventosProximos = [
-    {
-      data: "15/05",
-      titulo: "Treinamento de Novos Produtos",
-      horario: "14:00"
-    },
-    {
-      data: "16/05",
-      titulo: "Reunião de Resultados",
-      horario: "09:00"
-    }
-  ];
-
   const aniversariantes = [
     { nome: "Maria Silva", data: "15/05" },
     { nome: "João Santos", data: "17/05" },
@@ -83,13 +89,19 @@ const Dashboard: React.FC = () => {
     numeroPedidos: 23
   };
 
+  const eventosFormatados = eventos.map(evento => ({
+    data: new Date(evento.data).toLocaleDateString('pt-BR'),
+    titulo: evento.titulo,
+    horario: evento.hora
+  }));
+
   return (
     <Box sx={{ p: 3 }}>
       <Grid container spacing={3}>
         {/* Objetivos Estratégicos */}
         <Grid size={{ xs: 12 }} component="div">
           <Typography variant="h5" gutterBottom>
-            Objetivos e Indicadores Estratégicos
+            Objetivos e Indicadores Estratégicos: T2 2025
           </Typography>
           <Grid container spacing={2}>
             {objetivosEstrategicos.map((objetivo, index) => (
@@ -210,14 +222,24 @@ const Dashboard: React.FC = () => {
                   Próximos Eventos
                 </Typography>
                 <List>
-                  {eventosProximos.map((evento, index) => (
-                    <ListItem key={index}>
-                      <ListItemText
-                        primary={evento.titulo}
-                        secondary={`${evento.data} às ${evento.horario}`}
-                      />
+                  {loading ? (
+                    <ListItem>
+                      <ListItemText primary="Carregando eventos..." />
                     </ListItem>
-                  ))}
+                  ) : eventosFormatados.length === 0 ? (
+                    <ListItem>
+                      <ListItemText primary="Nenhum evento próximo" />
+                    </ListItem>
+                  ) : (
+                    eventosFormatados.map((evento, index) => (
+                      <ListItem key={index}>
+                        <ListItemText
+                          primary={evento.titulo}
+                          secondary={`${evento.data} às ${evento.horario}`}
+                        />
+                      </ListItem>
+                    ))
+                  )}
                 </List>
               </Paper>
             </Grid>

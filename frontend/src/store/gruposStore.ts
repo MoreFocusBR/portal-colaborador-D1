@@ -36,7 +36,7 @@ const useGruposStore = create<GruposState>((set, get) => ({
       set({ loading: true, error: null });
 
       // URL base da API
-      const url = "http://localhost:3001/grupos";
+      const url = "http://localhost:3001/api/grupos";
 
       // Fazer a requisição para a API
       const response = await fetch(url, {
@@ -71,7 +71,7 @@ const useGruposStore = create<GruposState>((set, get) => ({
       set({ loading: true, error: null });
 
       // URL base da API
-      const url = "http://localhost:3001/grupos";
+      const url = "http://localhost:3001/api/grupos";
 
       // Fazer a requisição para a API
       const response = await fetch(url, {
@@ -112,7 +112,7 @@ const useGruposStore = create<GruposState>((set, get) => ({
       set({ loading: true, error: null });
 
       // URL para atualizar o grupo
-      const url = `http://localhost:3001/grupos/${id}`;
+      const url = `http://localhost:3001/api/grupos/${id}`;
 
       // Fazer a requisição para a API
       const response = await fetch(url, {
@@ -160,7 +160,7 @@ const useGruposStore = create<GruposState>((set, get) => ({
       set({ loading: true, error: null });
 
       // URL para remover o grupo
-      const url = `http://localhost:3001/grupos/${id}`;
+      const url = `http://localhost:3001/api/grupos/${id}`;
 
       // Fazer a requisição para a API
       const response = await fetch(url, {

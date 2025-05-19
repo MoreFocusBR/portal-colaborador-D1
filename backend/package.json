@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "start": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/index.ts",
     "dev": "nodemon --watch src --exec node --inspect --no-warnings=ExperimentalWarning --loader ts-node/esm src/index.ts",
     "build": "tsc"
   },
@@ -19,6 +19,7 @@
     "@types/jsonwebtoken": "^9.x",
     "@types/node": "^22.15.2",
     "@types/pg": "^8.x",
+    "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },

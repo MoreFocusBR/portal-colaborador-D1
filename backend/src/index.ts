@@ -5,10 +5,11 @@ import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
 //import dashboardRouter from './routes/dashboard';
+import okrRoutes from "./routes/okr.js"; // Adicionar extensão .js
 
 // Importar controllers e middlewares necessários
-import eventoController from "./controllers/eventoController";
-import uploadMiddleware from "./middlewares/uploadMiddleware";
+import eventoController from "./controllers/eventoController.js";
+import uploadMiddleware from "./middlewares/uploadMiddleware.js";
 
 // Extender a interface Request para incluir a propriedade usuario
 declare global {
@@ -64,15 +65,6 @@ const pool = new Pool({
   connectionString,
 });
 
-// Testar conexão com o banco
-pool.query("SELECT NOW()", (err: Error | null, res: any) => {
-  if (err) {
-    console.error("Erro ao conectar ao PostgreSQL:", err);
-  } else {
-    console.log("Conexão com PostgreSQL estabelecida com sucesso");
-  }
-});
-
 
 // Simulação de dados para mensagens Email
 const mensagensEmailSimuladas = [
@@ -99,60 +91,6 @@ const mensagensEmailSimuladas = [
   },
 ];
 
-// Simulação de dados para usuários
-const usuariosSimulados = [
-  {
-    id: "1",
-    nome: "Administrador",
-    email: "admin@exemplo.com",
-    senha: "admin123", // Em produção, seria um hash
-    grupos: ["1"],
-    ultimaAtividade: "2025-04-24T15:30:00Z",
-  },
-  {
-    id: "2",
-    nome: "Operador Financeiro",
-    email: "financeiro@exemplo.com",
-    senha: "financeiro123", // Em produção, seria um hash
-    grupos: ["2"],
-    ultimaAtividade: "2025-04-23T10:15:00Z",
-  },
-  {
-    id: "3",
-    nome: "Atendente",
-    email: "atendimento@exemplo.com",
-    senha: "atendimento123", // Em produção, seria um hash
-    grupos: ["3"],
-    ultimaAtividade: "2025-04-22T14:45:00Z",
-  },
-];
-
-// Simulação de dados para grupos
-const gruposSimulados = [
-  {
-    id: "1",
-    nome: "Administradores",
-    telasPermitidas: [
-      "transacoes",
-      "mensagens-whatsapp",
-      "mensagens-email",
-      "usuarios",
-      "grupos",
-      "vendas",
-      "gestao-eventos" // Adicionar permissão para gestão de eventos
-    ],
-  },
-  {
-    id: "2",
-    nome: "Financeiro",
-    telasPermitidas: ["transacoes", "vendas"],
-  },
-  {
-    id: "3",
-    nome: "Atendimento",
-    telasPermitidas: ["mensagens-whatsapp", "mensagens-email"],
-  },
-];
 
 // Simulação de dados para vendas
 const vendasSimuladas = [
@@ -715,6 +653,9 @@ app.delete(
   verificarAutorizacao("gestao-eventos"),
   eventoController.deletarEvento
 );
+
+// ROTAS DE OKR
+app.use("/api/okr", autenticarToken, okrRoutes); // Adicionar rotas OKR, protegidas por autenticação
 
 // Iniciar o servidor
 app.listen(PORT, () => {

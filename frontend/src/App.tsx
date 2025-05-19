@@ -35,7 +35,8 @@ import EmailIcon from '@mui/icons-material/Email';
 import PeopleIcon from '@mui/icons-material/People';
 import GroupsIcon from '@mui/icons-material/Groups';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import EventIcon from '@mui/icons-material/Event'; // Ícone para Gestão de Eventos
+import EventIcon from '@mui/icons-material/Event';
+import AssessmentIcon from '@mui/icons-material/Assessment'; // Ícone para Gestão de OKR
 import AppProvider from './components/AppProvider/AppProvider';
 import Dashboard from './pages/Dashboard/Dashboard';
 import TransacoesFinanceiras from './pages/TransacoesFinanceiras/TransacoesFinanceiras';
@@ -44,21 +45,25 @@ import MensagensEmail from './pages/MensagensEmail/MensagensEmail';
 import GerenciamentoUsuarios from './pages/GerenciamentoUsuarios/GerenciamentoUsuarios';
 import GruposUsuarios from './pages/GruposUsuarios/GruposUsuarios';
 import TelaVendas from './pages/Vendas/TelaVendas';
-import GestaoEventos from './pages/GestaoEventos/GestaoEventos'; // Importar a nova tela
+import GestaoEventos from './pages/GestaoEventos/GestaoEventos';
+import GestaoOKRPage from './pages/GestaoOKR/GestaoOKRPage'; // Importar a nova tela de OKR
 import Login from './pages/Login/Login';
 import AcessoNegado from './pages/AcessoNegado/AcessoNegado';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import useAuthStore from './store/authStore';
 import { getAuthToken } from "./utils/auth";
+import { HomeFilled } from '@mui/icons-material';
 
 const telasDisponiveis = [
+  { id: 'tela-inicial', nome: 'Tela Incial' }, 
   { id: 'transacoes', nome: 'Transações Financeiras' },
   { id: 'mensagens-whatsapp', nome: 'Mensagens WhatsApp' },
   { id: 'mensagens-email', nome: 'Mensagens E-mail' },
   { id: 'usuarios', nome: 'Gerenciamento de Usuários' },
   { id: 'grupos', nome: 'Grupos de Usuários' },
   { id: 'vendas', nome: 'Vendas' },
-  { id: 'gestao-eventos', nome: 'Gestão de Eventos' } // Adicionar nova tela
+  { id: 'gestao-eventos', nome: 'Gestão de Eventos' },
+  { id: 'gestao-okr', nome: 'Gestão de OKR' } // Adicionar nova tela OKR
 ];
 
 const App: React.FC = () => {
@@ -108,11 +113,10 @@ const App: React.FC = () => {
       return;
     }
     setErroSenha('');
-    // Chame o endpoint de alteração de senha aqui
     try {
       const userId = usuario?.id;
       const token = getAuthToken();
-      const resp = await fetch(`http://localhost:3001/usuarios/${userId}/senha`, {
+      const resp = await fetch(`http://localhost:3001/api/usuarios/${userId}/senha`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +129,6 @@ const App: React.FC = () => {
         return;
       }
       handleFecharModalSenha();
-      // Opcional: mostrar notificação de sucesso
     } catch {
       setErroSenha('Erro ao alterar senha');
     }
@@ -151,13 +154,15 @@ const App: React.FC = () => {
   };
 
   const menuItems = [
-    { telaId: 'transacoes', label: 'Transações Financeiras', icon: <AttachMoneyIcon />, to: '/transacoes' },
-    { telaId: 'mensagens-whatsapp', label: 'Mensagens WhatsApp', icon: <WhatsAppIcon />, to: '/mensagens-whatsapp' },
-    { telaId: 'mensagens-email', label: 'Mensagens E-mail', icon: <EmailIcon />, to: '/mensagens-email' },
-    { telaId: 'usuarios', label: 'Gerenciamento de Usuários', icon: <PeopleIcon />, to: '/usuarios' },
-    { telaId: 'grupos', label: 'Grupos de Usuários', icon: <GroupsIcon />, to: '/grupos' },
-    { telaId: 'vendas', label: 'Vendas', icon: <ShoppingCartIcon />, to: '/vendas' },
-    { telaId: 'gestao-eventos', label: 'Gestão de Eventos', icon: <EventIcon />, to: '/gestao-eventos' } // Adicionar novo item de menu
+    { telaId: 'tela-inicial', label: 'Tela Inicial', icon: <HomeFilled />, to: '/' },
+    { telaId: 'transacoes', label: 'Transações Financeiras', icon: <AttachMoneyIcon />, to: '/api/transacoes' },
+    { telaId: 'mensagens-whatsapp', label: 'Mensagens WhatsApp', icon: <WhatsAppIcon />, to: '/api/mensagens-whatsapp' },
+    { telaId: 'mensagens-email', label: 'Mensagens E-mail', icon: <EmailIcon />, to: '/api/mensagens-email' },
+    { telaId: 'usuarios', label: 'Gerenciamento de Usuários', icon: <PeopleIcon />, to: '/api/usuarios' },
+    { telaId: 'grupos', label: 'Grupos de Usuários', icon: <GroupsIcon />, to: '/api/grupos' },
+    { telaId: 'vendas', label: 'Vendas', icon: <ShoppingCartIcon />, to: '/api/vendas' },
+    { telaId: 'gestao-eventos', label: 'Gestão de Eventos', icon: <EventIcon />, to: '/api/gestao-eventos' },
+    { telaId: 'gestao-okr', label: 'Gestão de OKR', icon: <AssessmentIcon />, to: '/api/gestao-okr' } // Adicionar novo item de menu OKR
   ];
 
   const menuItemsPermitidos = menuItems.filter(item => permissoes.includes(item.telaId));
@@ -297,58 +302,64 @@ const App: React.FC = () => {
             {isAuthenticated && <Toolbar />}
             <Container maxWidth="xl">
               <Routes>
-                <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+                <Route path="/api/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
                 <Route path="/acesso-negado" element={<AcessoNegado />} />
                 
                 <Route path="/" element={
-                  <ProtectedRoute telaId="tela-inicial" > {/* Default route */} 
+                  <ProtectedRoute telaId="tela-inicial" > 
                     <Dashboard />
                   </ProtectedRoute>
                 } />
                 
-                <Route path="/transacoes" element={
+                <Route path="/api/transacoes" element={
                   <ProtectedRoute telaId="transacoes">
                     <TransacoesFinanceiras />
                   </ProtectedRoute>
                 } />
                 
-                <Route path="/mensagens-whatsapp" element={
+                <Route path="/api/mensagens-whatsapp" element={
                   <ProtectedRoute telaId="mensagens-whatsapp">
                     <MensagensWhatsApp />
                   </ProtectedRoute>
                 } />
                 
-                <Route path="/mensagens-email" element={
+                <Route path="/api/mensagens-email" element={
                   <ProtectedRoute telaId="mensagens-email">
                     <MensagensEmail />
                   </ProtectedRoute>
                 } />
                 
-                <Route path="/usuarios" element={
+                <Route path="/api/usuarios" element={
                   <ProtectedRoute telaId="usuarios">
                     <GerenciamentoUsuarios />
                   </ProtectedRoute>
                 } />
                 
-                <Route path="/grupos" element={
+                <Route path="/api/grupos" element={
                   <ProtectedRoute telaId="grupos">
                     <GruposUsuarios />
                   </ProtectedRoute>
                 } />
                 
-                <Route path="/vendas" element={
+                <Route path="/api/vendas" element={
                   <ProtectedRoute telaId="vendas">
                     <TelaVendas />
                   </ProtectedRoute>
                 } />
 
-                <Route path="/gestao-eventos" element={ // Adicionar nova rota
+                <Route path="/api/gestao-eventos" element={ 
                   <ProtectedRoute telaId="gestao-eventos">
                     <GestaoEventos />
                   </ProtectedRoute>
                 } />
+
+                <Route path="/api/gestao-okr" element={ // Adicionar nova rota OKR
+                  <ProtectedRoute telaId="gestao-okr">
+                    <GestaoOKRPage />
+                  </ProtectedRoute>
+                } />
                 
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<Navigate to="/api/login/" replace />} />
               </Routes>
             </Container>
           </Box>

@@ -64,7 +64,7 @@ const useVendasStore = create<VendasState>((set, get) => ({
       }
 
       // URL base da API
-      const baseUrl = "http://localhost:3001/vendas";
+      const baseUrl = "http://localhost:3001/api/vendas";
       const url = params.toString()
         ? `${baseUrl}?${params.toString()}`
         : baseUrl;
@@ -112,7 +112,7 @@ const useVendasStore = create<VendasState>((set, get) => ({
       set({ loading: true, error: null });
 
       // URL para atualizar o status da venda
-      const url = `http://localhost:3001/vendas/${id}/status`;
+      const url = `http://localhost:3001/api/vendas/${id}/status`;
 
       // Fazer a requisição para a API
       const response = await fetch(url, {

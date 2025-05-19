@@ -39,7 +39,7 @@ const useAuthStore = create<AuthState>()(
         set({ loading: true, error: null });
         try {
           // Login na API
-          const response = await fetch('http://localhost:3001/auth/login', {
+          const response = await fetch('http://localhost:3001/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, senha })
@@ -52,7 +52,7 @@ const useAuthStore = create<AuthState>()(
           // Buscar permissões reais dos grupos do usuário
           let permissoes: string[] = [];
           if (data.usuario && Array.isArray(data.usuario.grupos) && data.usuario.grupos.length > 0) {
-            const gruposResp = await fetch(`http://localhost:3001/grupos?ids=${data.usuario.grupos.join(',')}`, {
+            const gruposResp = await fetch(`http://localhost:3001/api/grupos?ids=${data.usuario.grupos.join(',')}`, {
               headers: { 'Authorization': `Bearer ${data.token}` }
             });
             if (gruposResp.ok) {

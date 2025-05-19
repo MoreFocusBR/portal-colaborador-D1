@@ -1,6 +1,15 @@
 import { Request, Response } from "express";
-import pool from "../config/db"; // Assuming db.ts exports the PostgreSQL connection pool
+import { Pool } from "pg";
 
+
+// Configuração da conexão com o PostgreSQL
+const connectionString =
+  process.env.DATABASE_URL || "postgres://d1_orquestrador_db_user:m0rolZgKrck23Yd1p7rS72euVOtqxdI7@200.80.111.222:10066/d1_orquestrador_db";
+
+// Criar pool de conexões
+const pool = new Pool({
+  connectionString,
+});
 interface Evento {
   id?: number; // Assuming id is a number, adjust if it's UUID
   titulo: string;

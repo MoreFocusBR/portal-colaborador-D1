@@ -34,7 +34,7 @@ const useMensagensWhatsAppStore = create<MensagensWhatsAppState>(
         set({ loading: true, error: null });
 
         // URL base da API
-        const url = "http://localhost:3001/mensagens-whatsapp";
+        const url = "http://localhost:3001/api/mensagens-whatsapp";
 
         // Fazer a requisição para a API
         const response = await fetch(url, {
@@ -77,7 +77,7 @@ const useMensagensWhatsAppStore = create<MensagensWhatsAppState>(
         }
 
         // URL para atualizar a mensagem
-        const url = `http://localhost:3001/mensagens-whatsapp/${id}`;
+        const url = `http://localhost:3001/api/mensagens-whatsapp/${id}`;
 
         // Fazer a requisição para atualizar o status
         const response = await fetch(url, {

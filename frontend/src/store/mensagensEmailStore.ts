@@ -35,7 +35,7 @@ const useMensagensEmailStore = create<MensagensEmailState>((set, get) => ({
       set({ loading: true, error: null });
       
       // URL base da API
-      const url = 'http://localhost:3001/mensagens-email';
+      const url = 'http://localhost:3001/api/mensagens-email';
       
       // Fazer a requisição para a API
       const response = await fetch(url, {
@@ -75,7 +75,7 @@ const useMensagensEmailStore = create<MensagensEmailState>((set, get) => ({
       }
       
       // URL para atualizar a mensagem
-      const url = `http://localhost:3001/mensagens-email/${id}`;
+      const url = `http://localhost:3001/api/mensagens-email/${id}`;
       
       // Fazer a requisição para atualizar o status
       const response = await fetch(url, {
