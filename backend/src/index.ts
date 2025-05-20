@@ -10,6 +10,7 @@ import okrRoutes from "./routes/okr.js"; // Adicionar extensão .js
 // Importar controllers e middlewares necessários
 import eventoController from "./controllers/eventoController.js";
 import uploadMiddleware from "./middlewares/uploadMiddleware.js";
+import path from "path";
 
 // Extender a interface Request para incluir a propriedade usuario
 declare global {
@@ -49,8 +50,16 @@ app.use((req, res, next) => {
   res.setHeader("Referrer-Policy", "no-referrer-when-downgrade"); // Ou 'origin'
   next();
 });
+ 
+//app.use(express.json());
+// Serve arquivos estáticos do frontend
+app.use(express.static(path.join(__dirname, '../../frontend/dist'))); // Ajuste o caminho conforme necessário
 
-app.use(express.json());
+// Rota para SPA (React/Vite)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+});
+
 app.use("/uploads", express.static("uploads")); // Servir arquivos estáticos da pasta uploads
 
 // Integrar rotas do dashboard
