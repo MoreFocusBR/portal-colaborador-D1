@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "start": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/index.ts",
+    "start": "node --no-warnings=ExperimentalWarning --loader ts-node/esm dist/index.js",
     "dev": "nodemon --watch src --exec node --inspect --no-warnings=ExperimentalWarning --loader ts-node/esm src/index.ts",
     "build": "tsc"
   },

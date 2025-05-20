@@ -37,38 +37,24 @@ RUN sed -i 's/set NODE_OPTIONS=--openssl-legacy-provider && //g' package.json
 # Compilar o aplicativo React
 RUN npm run build
 
-# Estágio final - imagem mínima
+
+# Etapa final
 FROM node:20-alpine as production
-
-# Instalar serve para o frontend
-RUN npm install -g serve
-
-# Criar diretórios de trabalho
 WORKDIR /app
 
-# Copiar script de inicialização
-COPY start-services.sh /app/start-services.sh
-RUN chmod +x /app/start-services.sh
+# Copiar backend
+COPY --from=backend-build /app/backend/dist ./backend/dist
+COPY --from=backend-build /app/backend/package*.json ./backend/
+# Copiar frontend buildado para pasta servida pelo Express
+COPY --from=frontend-build /app/frontend/build ./frontend/build
 
-# Criar diretórios para backend e frontend
-RUN mkdir -p /app/backend /app/frontend
-
-# Copiar apenas arquivos compilados do backend
-COPY --from=backend-build /app/backend/dist /app/backend/dist
-COPY --from=backend-build /app/backend/package*.json /app/backend/
-
-# Copiar arquivos compilados do frontend
-COPY --from=frontend-build /app/frontend/build /app/frontend/build
-
-# Instalar apenas dependências de produção com cache limpo
+# Instalar dependências do backend
 WORKDIR /app/backend
-RUN npm ci && npm cache clean --force
+RUN npm ci --only=production && npm cache clean --force
 
-# Expor ambas as portas
-EXPOSE 3000 3001
+# Expor somente a porta do backend
+EXPOSE 3001
 
-# Variáveis de ambiente
 ENV NODE_ENV=production
 
-# Comando para iniciar ambos os serviços
-CMD ["/app/start-services.sh"]
+CMD ["node", "dist/index.js"]
