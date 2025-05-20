@@ -5,10 +5,11 @@ import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
 //import dashboardRouter from './routes/dashboard';
-import okrRoutes from "./routes/okr";
-import eventoController from "./controllers/eventoController";
-import uploadMiddleware from "./middlewares/uploadMiddleware";
+import okrRoutes from "./routes/okr.js"; // Adicionar extensão .js
 
+// Importar controllers e middlewares necessários
+import eventoController from "./controllers/eventoController.js";
+import uploadMiddleware from "./middlewares/uploadMiddleware.js";
 
 // Extender a interface Request para incluir a propriedade usuario
 declare global {
