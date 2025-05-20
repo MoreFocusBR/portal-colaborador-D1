@@ -1,3 +1,4 @@
+
 export enum KRType {
     BOOLEAN = 'boolean',
     PERCENTAGE = 'percentage',

@@ -15,7 +15,6 @@ import {
   removeKeyResult as apiRemoveKeyResult,
   Objective as ApiObjective,
   KeyResult as ApiKeyResult,
-  OkrOverviewMetrics as ApiOkrOverviewMetrics,
   KRType,
   KRStatus
 } from '../../services/okrApiService';
@@ -58,7 +57,14 @@ interface ObjectiveCardProps {
   onDeleteKeyResult: (krId: string) => void;
 }
 
-interface OkrOverviewMetrics extends ApiOkrOverviewMetrics {}
+// Interface correta para overviewMetrics
+interface OkrOverviewMetrics {
+  daysLeft: number;
+  overallProgress: number;
+  tasksCompleted: number;
+  totalTasks: number;
+  netConfidenceScore: number;
+}
 
 function a11yProps(index: number) {
   return {
@@ -96,7 +102,7 @@ const GestaoOKRPage: React.FC = () => {
           description: obj.description!,
           responsible: obj.responsible!,
           quarter: obj.quarter!,
-          keyResults: (obj.keyResults ?? []).map(kr => ({
+          keyResults: (obj.keyResults ?? []).map((kr: any) => ({
             id: kr.id,
             title: kr.title,
             // Garantir que description nunca seja undefined

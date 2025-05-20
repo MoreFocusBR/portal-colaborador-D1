@@ -6,7 +6,7 @@ WORKDIR /app/backend
 COPY backend/package*.json ./
 
 # Instalar apenas dependências de produção
-RUN npm ci --only=production
+RUN npm ci
 
 # Copiar apenas arquivos necessários do backend
 COPY backend/src ./src
@@ -62,7 +62,7 @@ COPY --from=frontend-build /app/frontend/build /app/frontend/build
 
 # Instalar apenas dependências de produção com cache limpo
 WORKDIR /app/backend
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 # Expor ambas as portas
 EXPOSE 3000 3001

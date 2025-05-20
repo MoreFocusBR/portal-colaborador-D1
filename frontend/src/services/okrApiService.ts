@@ -1,5 +1,5 @@
 // /home/ubuntu/admin_project/d1-admin-main/frontend/src/services/okrApiService.ts
-import { Objective, KeyResult, OkrOverviewMetrics } from '../../../backend/src/types/okrTypes'; // Adjust path as needed
+import { Objective, KeyResult, OkrOverviewMetrics } from '../types/okrTypes';
 import { getAuthToken } from "../utils/auth"; // Para obter o token
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api'; // Adjust if your API is elsewhere
@@ -191,7 +191,7 @@ export const addNoteToKeyResult = async (objectiveId: string, krId: string, note
 };
 
 // You might need to define a more specific type for the frontend if backend types are not directly usable or complete
-export type { Objective, KeyResult, OkrOverviewMetrics } from '../../../backend/src/types/okrTypes'; // Re-export for convenience
+export type { Objective, KeyResult, OkrOverviewMetrics } from '../types/okrTypes'; // Re-export for convenience
 
 export enum KRType {
     BOOLEAN = 'boolean',

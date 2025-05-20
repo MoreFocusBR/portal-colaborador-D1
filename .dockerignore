@@ -52,7 +52,6 @@ CHANGELOG.md
 **/.eslintrc*
 **/.prettierrc*
 **/.babelrc*
-**/tsconfig.json
 **/webpack.config.js
 **/rollup.config.js
 

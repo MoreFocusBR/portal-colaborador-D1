@@ -88,7 +88,8 @@ Antes de publicar no Render.com, você pode testar localmente:
 ```bash
 # Na raiz do projeto
 docker build -t portal-colaborador-d1 .
-docker run -p 3001:3001 -e DATABASE_URL=sua_url_db -e JWT_SECRET=seu_segredo portal-colaborador-d1
+docker run -p 3000:3000 -p 3001:3001 -e DATABASE_URL=postgres://d1_orquestrador_db_user:m0rolZgKrck23Yd1p7rS72euVOtqxdI7@200.80.111.222:10066/d1_orquestrador_db -e JWT_SECRET=1234567890 portal-colaborador-d1
+
 ```
 
 ### 2. Criação do Serviço Web no Render.com
