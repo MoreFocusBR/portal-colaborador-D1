@@ -4,6 +4,7 @@ import { Pool } from "pg";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import jwt, { JwtPayload, VerifyErrors } from "jsonwebtoken";
+import path from "path";
 //import dashboardRouter from './routes/dashboard';
 import okrRoutes from "./routes/okr.js"; // Adicionar extensão .js
 
@@ -500,168 +501,28 @@ app.get(
   }
 );
 
-app.post(
-  "/api/grupos", // Adicionado /api
-  autenticarToken,
-  verificarAutorizacao("grupos"),
-  async (req, res) => {
-    const { nome, telasPermitidas } = req.body;
-    if (!nome) {
-      return res.status(400).json({ error: "Nome é obrigatório" });
-    }
-    try {
-      const result = await pool.query(
-        'INSERT INTO grupos (id, nome, telas_permitidas) VALUES ($1, $2, $3) RETURNING *',
-        [uuidv4(), nome, telasPermitidas || []]
-      );
-      res.status(201).json(result.rows[0]);
-    } catch (error) {
-      console.error("Erro ao criar grupo:", error);
-      res.status(500).json({ error: "Erro ao criar grupo" });
-    }
+// Adicionar rotas OKR
+app.use('/api/okr', okrRoutes);
+
+// Adicionar rotas de eventos
+app.post('/api/eventos', uploadMiddleware, eventoController.criarEvento);
+app.get('/api/eventos', eventoController.listarEventos);
+app.get('/api/eventos/:id', eventoController.obterEvento);
+app.put('/api/eventos/:id', uploadMiddleware, eventoController.atualizarEvento);
+app.delete('/api/eventos/:id', eventoController.excluirEvento);
+
+// Configuração para servir arquivos estáticos do frontend React
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Rota para todas as requisições não-API retornarem o index.html
+app.get('*', (req, res) => {
+  // Verifica se a requisição não é para a API
+  if (!req.path.startsWith('/api/')) {
+    res.sendFile(path.join(__dirname, '../public/index.html'));
   }
-);
-
-app.patch(
-  "/api/grupos/:id", // Adicionado /api
-  autenticarToken,
-  verificarAutorizacao("grupos"),
-  async (req, res) => {
-    const { id } = req.params;
-    const { nome, telasPermitidas } = req.body;
-    try {
-      const result = await pool.query(
-        'UPDATE grupos SET nome = COALESCE($1, nome), telas_permitidas = COALESCE($2, telas_permitidas) WHERE id = $3 RETURNING *',
-        [nome, telasPermitidas, id]
-      );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Grupo não encontrado" });
-      }
-      res.json(result.rows[0]);
-    } catch (error) {
-      console.error("Erro ao atualizar grupo:", error);
-      res.status(500).json({ error: "Erro ao atualizar grupo" });
-    }
-  }
-);
-
-app.delete(
-  "/api/grupos/:id", // Adicionado /api
-  autenticarToken,
-  verificarAutorizacao("grupos"),
-  async (req, res) => {
-    const { id } = req.params;
-    try {
-      const result = await pool.query('DELETE FROM grupos WHERE id = $1', [id]);
-      if (result.rowCount === 0) {
-        return res.status(404).json({ error: "Grupo não encontrado" });
-      }
-      res.status(204).end();
-    } catch (error) {
-      console.error("Erro ao deletar grupo:", error);
-      res.status(500).json({ error: "Erro ao deletar grupo" });
-    }
-  }
-);
-
-// Rotas para gerenciamento de vendas (protegidas)
-app.get(
-  "/api/vendas", // Adicionado /api
-  autenticarToken,
-  verificarAutorizacao("vendas"),
-  (req, res) => {
-    const { periodo, status, numeroVenda } = req.query;
-    let vendasFiltradas = [...vendasSimuladas];
-    if (periodo) {
-      const diasAtras = parseInt(periodo as string);
-      const dataLimite = new Date();
-      dataLimite.setDate(dataLimite.getDate() - diasAtras);
-      vendasFiltradas = vendasFiltradas.filter(
-        (v) => new Date(v.data) >= dataLimite
-      );
-    }
-    if (status) {
-      vendasFiltradas = vendasFiltradas.filter((v) => v.status === status);
-    }
-    if (numeroVenda) {
-      vendasFiltradas = vendasFiltradas.filter((v) =>
-        v.numero.includes(numeroVenda as string)
-      );
-    }
-    res.json(vendasFiltradas);
-  }
-);
-
-app.patch(
-  "/api/vendas/:id/status", // Adicionado /api
-  autenticarToken,
-  verificarAutorizacao("vendas"),
-  (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
-    const vendaIndex = vendasSimuladas.findIndex((v) => v.id === id);
-    if (vendaIndex === -1) {
-      return res.status(404).json({ error: "Venda não encontrada" });
-    }
-    if (vendasSimuladas[vendaIndex].status !== "Financeiro Validado") {
-      return res
-        .status(400)
-        .json({
-          error:
-            'Apenas vendas com status "Financeiro Validado" podem ter o status alterado',
-        });
-    }
-    vendasSimuladas[vendaIndex].status = status;
-    res.json(vendasSimuladas[vendaIndex]);
-  }
-);
-
-// ROTAS DE EVENTOS INTEGRADAS
-app.post(
-  "/api/eventos",
-  autenticarToken,
-  verificarAutorizacao("gestao-eventos"), // Permissão específica para gestão de eventos
-  uploadMiddleware.single("imagem"),
-  eventoController.criarEvento
-);
-
-app.get(
-  "/api/eventos",
-  autenticarToken,
-  verificarAutorizacao("gestao-eventos"), // Ou uma permissão mais genérica se todos puderem listar
-  eventoController.listarEventos
-);
-
-app.get(
-  "/api/eventos/:id",
-  autenticarToken,
-  verificarAutorizacao("gestao-eventos"), // Ou uma permissão mais genérica
-  eventoController.obterEvento
-);
-
-app.put(
-  "/api/eventos/:id",
-  autenticarToken,
-  verificarAutorizacao("gestao-eventos"),
-  uploadMiddleware.single("imagem"),
-  eventoController.atualizarEvento
-);
-
-app.delete(
-  "/api/eventos/:id",
-  autenticarToken,
-  verificarAutorizacao("gestao-eventos"),
-  eventoController.deletarEvento
-);
-
-// ROTAS DE OKR
-app.use("/api/okr", autenticarToken, okrRoutes); // Adicionar rotas OKR, protegidas por autenticação
+});
 
 // Iniciar o servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
-
-export { pool };
-export default app;
-
